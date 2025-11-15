@@ -574,24 +574,21 @@
 
     <!-- Library Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- pdf.js - Added onload="runApp()" to fix loading issue -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.107/pdf.min.js" onload="runApp()"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.107/pdf.min.js"></script>
     
     <!-- JavaScript for Interactivity -->
     <script>
-        // Wrapped all code in runApp() to fix pdf.js loading error
-        function runApp() {
+        // This event listener is the key fix. It waits for the HTML to be ready
+        // so that all the `getElementById` calls will work.
+        document.addEventListener('DOMContentLoaded', () => {
+
             // --- Set PDF.js worker source ---
+            // We set this once, but we check if pdfjsLib exists *when the user uploads a file*
             if (typeof pdfjsLib !== 'undefined') {
                 pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.107/pdf.worker.min.js";
             } else {
-                console.error("FATAL: pdf.js library (pdfjsLib) failed to load. PDF processing will not work.");
-                // Show a user-facing error
-                const errorMessage = document.getElementById('error-message');
-                if (errorMessage) {
-                    errorMessage.textContent = 'Error: PDF library failed to load. Please refresh the page.';
-                }
+                console.warn("pdf.js library (pdfjsLib) is not loaded yet. Will check again at file upload.");
+                // This is not fatal, as the library might still be loading.
             }
 
             // --- Mobile Menu ---
@@ -640,6 +637,7 @@
             let currentChart = null; // To destroy old charts
             let originalOutputContent = {}; // To store untranslated HTML
             let currentActiveTabId = '';
+            let isTranslating = false; // Prevent multiple translations
 
             // --- State Validation ---
             function validateState() {
@@ -660,6 +658,7 @@
  
             // --- File Dropzone Logic ---
             dropzone.addEventListener('click', () => fileUpload.click());
+
             fileUpload.addEventListener('change', (e) => {
                 if (e.target.files.length > 0) {
                     handleFile(e.target.files[0]);
@@ -723,11 +722,20 @@
                     };
                     reader.readAsText(file);
                 } else if (file.type === 'application/pdf') {
-                    if (typeof pdfjsLib === 'undefined') {
-                        errorMessage.textContent = 'PDF library failed to load. Please refresh.';
+                    // This is the critical check
+                    if (typeof pdfjsLib === 'undefined' || !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+                        console.error("FATAL: pdf.js library (pdfjsLib) failed to load.");
+                        errorMessage.textContent = 'PDF library failed to load. Please refresh the page.';
+                        
+                        // Try to set workerSrc again, just in case
+                        if(typeof pdfjsLib !== 'undefined') {
+                            pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.107/pdf.worker.min.js";
+                        }
+                        
                         resetFileInput();
                         return;
                     }
+                    
                     const reader = new FileReader();
                     reader.onload = async (e) => {
                         try {
@@ -776,6 +784,8 @@
                 if (textInput.value.trim().length > 0) {
                     if (selectedFile) resetFileInput(); // Clear file if user types
                     fullDocumentText = textInput.value.trim();
+                } else {
+                    fullDocumentText = null;
                 }
                 validateState();
             });
@@ -907,7 +917,7 @@
                                             <tr class="bg-gray-900">
                                                 <td class="py-3 px-4 font-medium" data-translate>${row.metric}</td>
                                                 <td class="py-3 px-4" data-translate>${row.value}</td>
-                                                <td class="py-3 px-4 ${row.change.startsWith('+') ? 'text-green-400' : 'text-red-400'}" data-translate>${row.change}</td>
+                                                <td class="py-3 px-4 ${String(row.change).startsWith('+') ? 'text-green-400' : String(row.change).startsWith('-') ? 'text-red-400' : ''}" data-translate>${row.change}</td>
                                             </tr>
                                         `).join('')}
                                     </tbody>
@@ -954,7 +964,7 @@
                             break;
                     }
                 } catch (e) {
-                    console.error("Error displaying output:", e);
+                    console.error("Error displaying output:", e, "Response:", response);
                     contentHtml = `<p class="text-red-400">Error: The AI response was not in the expected format. Please try again.</p>`;
                 }
 
@@ -986,7 +996,6 @@
                 if (persona === 'student' && response.quiz) {
                     setupQuiz(response.quiz);
                 }
-
             }
 
             function renderChart(chartData) {
@@ -1032,13 +1041,19 @@
                     });
                 } catch (e) {
                     console.error("Chart.js error:", e);
-                    outputContent.querySelector('.chart-container').innerHTML = `<p class="text-red-400">Error rendering chart.</p>`;
+                    const chartContainer = outputContent.querySelector('.chart-container');
+                    if(chartContainer) {
+                        chartContainer.innerHTML = `<p class="text-red-400">Error rendering chart.</p>`;
+                    }
                 }
             }
 
             function setupQuiz(quiz) {
                 const quizContainer = document.getElementById('quiz-container');
+                if (!quizContainer) return;
+                
                 const feedbackEl = document.getElementById('quiz-feedback');
+                
                 quizContainer.addEventListener('click', (e) => {
                     const optionBtn = e.target.closest('.quiz-option');
                     if (!optionBtn) return;
@@ -1071,7 +1086,7 @@
             }
 
             async function switchTab(tabId, originalPersona) {
-                if (currentActiveTabId === tabId) return; // Already on this tab
+                if (currentActiveTabId === tabId || isTranslating) return; // Already on this tab or busy
 
                 // Update tab visual state
                 outputTabs.querySelectorAll('button').forEach(btn => {
@@ -1103,25 +1118,16 @@
                         // We must be on the same tab to render
                         if (currentActiveTabId !== tabId) return;
                         
-                        displayRealOutput(aiResponse, tabId); // This will re-render all tabs but focus on the new one
+                        // This is simplified. We'll just render the new content.
+                        // The full `displayRealOutput` is too complex here.
+                        // A better way would be to store the *response* not the *HTML*.
+                        // For now, let's just re-run the main display function.
+                        displayRealOutput(aiResponse, tabId);
+                        
                     } catch (error) {
                         console.error('Error switching tab:', error);
                         outputContent.innerHTML = `<p class="text-red-400">Error loading this view: ${error.message}</p>`;
                     }
-                }
-
-                // Re-render chart or quiz if switching to a tab that has them
-                if (tabId === 'business' && outputContent.querySelector('#outputChart')) {
-                    // This is tricky because the chart data is in the original response
-                    // For now, we'll just show a message.
-                    // A better implementation would store the aiResponse object
-                    if (!currentChart) {
-                        outputContent.querySelector('.chart-container').innerHTML = `<p class="text-gray-400">Switch back to the original tab to see the chart.</p>`;
-                    }
-                }
-                
-                if (tabId === 'student' && outputContent.querySelector('#quiz-container')) {
-                    // Quiz data is also in original response, need to re-request or store
                 }
             }
 
@@ -1165,7 +1171,10 @@
                 bubble.className = `chat-bubble ${isUser ? 'chat-bubble-user' : 'chat-bubble-ai'}`;
                 
                 // Sanitize and format text (simple version)
-                const formattedText = text.replace(/\n/g, '<br>'); // Keep newlines
+                const formattedText = text
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/\n/g, '<br>'); // Keep newlines
                 
                 bubble.innerHTML = `<div class="chat-message-text">${formattedText}</div>`;
                 
@@ -1178,53 +1187,58 @@
 
             // --- NEW: Translate Logic ---
             translateSelect.addEventListener('change', async (e) => {
+                if (isTranslating) return;
+                isTranslating = true;
+                
                 const language = e.target.value;
-                if (!language) {
-                    // Reset to original
-                    if (originalOutputContent[currentActiveTabId]) {
-                        outputContent.innerHTML = originalOutputContent[currentActiveTabId];
-                        // Re-run post-render for chart/quiz
-                        if (currentActiveTabId === 'business' && outputContent.querySelector('#outputChart')) {
-                            // This part is complex, as it needs the original data
-                            // Easiest is to re-run the *original* display function
-                            // ... but that requires storing the original AI response.
-                            // For now, we'll just accept chart/quiz is lost on translate-reset.
-                            if (currentChart) currentChart.destroy();
+                
+                // Always restore from original before translating or resetting
+                if (originalOutputContent[currentActiveTabId]) {
+                    outputContent.innerHTML = originalOutputContent[currentActiveTabId];
+                    // Re-run post-render for chart/quiz
+                    if (currentActiveTabId === 'business') {
+                        const chartData = originalOutputContent[currentActiveTabId].match(/<canvas id="outputChart"><\/canvas>/);
+                        if(chartData) {
+                            // This is very tricky without storing the original response object.
+                            // For now, we accept chart is lost on translate.
                         }
                     }
-                    return;
+                    if (currentActiveTabId === 'student') {
+                        // Same for quiz
+                    }
+                }
+
+                if (!language) {
+                    isTranslating = false;
+                    return; // Just reset to original
                 }
 
                 // Get all translatable elements
                 const elementsToTranslate = outputContent.querySelectorAll('[data-translate]');
-                if (elementsToTranslate.length === 0) return;
+                if (elementsToTranslate.length === 0) {
+                    isTranslating = false;
+                    return;
+                }
 
-                const loadingHTML = `<div class="flex justify-center items-center p-8"><div class="loader"></div></div>`;
-                const originalHTML = outputContent.innerHTML;
-                outputContent.innerHTML = loadingHTML;
+                const originalTexts = Array.from(elementsToTranslate).map(el => el.textContent);
+                const loadingIndicator = '...';
+                elementsToTranslate.forEach(el => el.textContent = loadingIndicator);
 
                 try {
-                    // We'll translate all elements in one go.
-                    // This is a simplification; a better way is per-element.
-                    // For now, we'll just translate the *whole* HTML block.
-                    // This will break the chart and quiz.
-                    // A better approach:
-                    const elements = Array.from(elementsToTranslate);
-                    const originalTexts = elements.map(el => el.textContent);
-                    
                     const translatedTexts = [];
                     for (const text of originalTexts) {
+                        if (text.trim() === '') {
+                            translatedTexts.push('');
+                            continue;
+                        }
                         const response = await callApi('/api/translate', {
                             text: text,
                             targetLanguage: language
                         });
                         translatedTexts.push(response.translatedText);
-                        await new Promise(res => setTimeout(res, 200)); // Rate limit
+                        // No rate limit, let Vercel handle concurrency
                     }
 
-                    // Put original HTML back to manipulate it
-                    outputContent.innerHTML = originalHTML; 
-                    
                     // Re-find elements and replace text
                     outputContent.querySelectorAll('[data-translate]').forEach((el, index) => {
                         if (translatedTexts[index]) {
@@ -1234,8 +1248,11 @@
 
                 } catch (error) {
                     console.error('Translate error:', error);
-                    outputContent.innerHTML = originalHTML; // Restore on error
                     alert(`Translation failed: ${error.message}`);
+                    // Restore original content on error
+                    outputContent.innerHTML = originalOutputContent[currentActiveTabId];
+                } finally {
+                    isTranslating = false;
                 }
             });
             
@@ -1244,20 +1261,31 @@
                 // Get text from the active tab
                 const contentToCopy = outputContent.innerText;
                 
-                // Simple clipboard write
-                const textArea = document.createElement('textarea');
-                textArea.value = contentToCopy;
-                document.body.appendChild(textArea);
-                textArea.select();
-                try {
-                    document.execCommand('copy');
-                    copySuccess.classList.remove('hidden');
-                    setTimeout(() => copySuccess.classList.add('hidden'), 2000);
-                } catch (err) {
-                    console.error('Failed to copy text: ', err);
-                    alert('Failed to copy text.');
+                // Use clipboard API if available (more modern)
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(contentToCopy).then(() => {
+                        copySuccess.classList.remove('hidden');
+                        setTimeout(() => copySuccess.classList.add('hidden'), 2000);
+                    }).catch(err => {
+                        console.error('Failed to copy text: ', err);
+                        alert('Failed to copy text.');
+                    });
+                } else {
+                    // Fallback for older browsers/insecure contexts
+                    const textArea = document.createElement('textarea');
+                    textArea.value = contentToCopy;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    try {
+                        document.execCommand('copy');
+                        copySuccess.classList.remove('hidden');
+                        setTimeout(() => copySuccess.classList.add('hidden'), 2000);
+                    } catch (err) {
+                        console.error('Failed to copy text: ', err);
+                        alert('Failed to copy text.');
+                    }
+                    document.body.removeChild(textArea);
                 }
-                document.body.removeChild(textArea);
             });
 
             // --- NEW: Universal API Call Function ---
@@ -1287,8 +1315,8 @@
                 throw new Error('API request failed after all retries.');
             }
         
-        // Close the runApp function wrapper
-        }
+        // Close the DOMContentLoaded wrapper
+        });
     </script>
 </body>
 </html>
