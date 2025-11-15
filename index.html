@@ -192,6 +192,36 @@
             height: 300px;
             width: 100%;
         }
+
+        /* NEW: Mic Button Listening Style */
+        .mic-listening svg {
+            color: #ef4444; /* red-500 */
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        /* NEW: Custom select for speech */
+        .speech-select {
+            background-color: #4B5563; /* gray-600 */
+            border: 1px solid #6B7280; /* gray-500 */
+            color: white;
+            border-radius: 0.5rem;
+            padding: 0.65rem 0.5rem;
+            font-size: 0.875rem;
+            cursor: pointer;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 0.5rem center;
+            background-size: 1.25em 1.25em;
+            padding-right: 2.5rem;
+        }
     </style>
 </head>
 <body class="text-gray-200 antialiased">
@@ -342,17 +372,24 @@
                                         <!-- NEW: Language list updated -->
                                         <select id="translate-select" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block p-2">
                                             <option value="">Translate...</option>
-                                            <option value="Spanish">Spanish</option>
+                                            <option value="Arabic">Arabic</option>
+                                            <option value="Bengali">Bengali</option>
+                                            <option value="Dutch">Dutch</option>
                                             <option value="French">French</option>
                                             <option value="German">German</option>
-                                            <option value="Japanese">Japanese</option>
-                                            <option value="Mandarin Chinese">Mandarin Chinese</option>
                                             <option value="Hindi">Hindi</option>
+                                            <option value="Italian">Italian</option>
+                                            <option value="Japanese">Japanese</option>
+                                            <option value="Korean">Korean</option>
+                                            <option value="Mandarin Chinese">Mandarin Chinese</option>
                                             <option value="Marathi">Marathi</option>
+                                            <option value="Polish">Polish</option>
                                             <option value="Portuguese">Portuguese</option>
                                             <option value="Russian">Russian</option>
-                                            <option value="Arabic">Arabic</option>
-                                            <option value="Italian">Italian</option>
+                                            <option value="Spanish">Spanish</option>
+                                            <option value="Swahili">Swahili</option>
+                                            <option value="Turkish">Turkish</option>
+                                            <option value="Vietnamese">Vietnamese</option>
                                         </select>
                                         <button id="copy-btn" title="Copy to Clipboard" class="p-2 rounded-lg text-gray-400 bg-gray-700 hover:bg-gray-600 hover:text-white transition-colors">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
@@ -377,9 +414,30 @@
                                         Ask me a follow-up question about your document!
                                     </div>
                                 </div>
+                                
                                 <!-- Chat Input -->
-                                <form id="chat-form" class="flex space-x-2">
-                                    <input type="text" id="chat-input" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg p-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="e.g., 'What was the total revenue?'">
+                                <!-- NEW: Chat form with Mic Button and Language Select -->
+                                <form id="chat-form" class="flex items-center space-x-2">
+                                    <input type="text" id="chat-input" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg p-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Ask a follow-up question...">
+                                    
+                                    <div id="speech-controls" class="flex space-x-2">
+                                        <select id="speech-lang-select" class="speech-select">
+                                            <option value="en-US">English</option>
+                                            <option value="es-ES">Spanish</option>
+                                            <option value="fr-FR">French</option>
+                                            <option value="de-DE">German</option>
+                                            <option value="hi-IN">Hindi</option>
+                                            <option value="mr-IN">Marathi</option>
+                                            <option value="ja-JP">Japanese</option>
+                                            <option value="cmn-Hans-CN">Chinese</option>
+                                            <option value="ru-RU">Russian</option>
+                                            <option value="ar-SA">Arabic</option>
+                                        </select>
+                                        <button type="button" id="mic-btn" class="p-3 rounded-lg bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white transition-colors">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                                        </button>
+                                    </div>
+
                                     <button id="chat-submit-btn" type="submit" class="p-3 rounded-lg gradient-bg text-white font-semibold hover:opacity-90 transition-opacity">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                                     </button>
@@ -661,6 +719,11 @@
         const chatHistoryEl = document.getElementById('chat-history');
         const chatErrorMessage = document.getElementById('chat-error-message');
 
+        // NEW: Speech Elements
+        const speechControls = document.getElementById('speech-controls');
+        const micBtn = document.getElementById('mic-btn');
+        const speechLangSelect = document.getElementById('speech-lang-select');
+
         // App State
         let selectedFile = null;
         let selectedPersona = null;
@@ -671,7 +734,10 @@
         let originalResponseData = {}; // Stores original AI response for chart/quiz re-render
         let currentActiveTabId = '';
         let isTranslating = false;
-        let isPdfLibLoading = false; // NEW: Flag to prevent multiple loads
+        let isPdfLibLoading = false; // Flag to prevent multiple loads
+        let recognition = null; // Speech recognition object
+        let isListening = false;
+        const chatInputPlaceholder = "Ask a follow-up question...";
 
         // --- Loader/Progress HTML ---
         const standardLoaderHTML = `<div class="loader"></div>`;
@@ -1440,6 +1506,65 @@
                 document.body.removeChild(textArea);
             }
         });
+
+        // --- NEW: Speech Recognition Logic ---
+        function setupSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (SpeechRecognition) {
+                recognition = new SpeechRecognition();
+                recognition.continuous = false; // Stop after one phrase
+                recognition.interimResults = false;
+                
+                recognition.onstart = () => {
+                    isListening = true;
+                    micBtn.classList.add('mic-listening');
+                    chatInput.placeholder = 'Listening...';
+                    chatErrorMessage.textContent = '';
+                };
+                
+                recognition.onend = () => {
+                    isListening = false;
+                    micBtn.classList.remove('mic-listening');
+                    chatInput.placeholder = chatInputPlaceholder;
+                };
+                
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    chatInput.value = transcript;
+                };
+                
+                recognition.onerror = (event) => {
+                    if (event.error === 'no-speech' || event.error === 'audio-capture') {
+                        chatErrorMessage.textContent = 'Mic error: Could not hear you. Please try again.';
+                    } else if (event.error === 'not-allowed') {
+                        chatErrorMessage.textContent = 'Mic access was denied. Please allow it in your browser.';
+                    } else {
+                        chatErrorMessage.textContent = `Mic error: ${event.error}`;
+                    }
+                    console.error('Speech recognition error:', event.error);
+                };
+                
+                micBtn.addEventListener('click', () => {
+                    if (isListening) {
+                        recognition.stop();
+                    } else {
+                        try {
+                            recognition.lang = speechLangSelect.value;
+                            recognition.start();
+                        } catch (e) {
+                            console.error("Error starting recognition:", e);
+                            chatErrorMessage.textContent = 'Mic error: Could not start.';
+                        }
+                    }
+                });
+
+            } else {
+                console.warn('Web Speech API (SpeechRecognition) not supported in this browser.');
+                speechControls.classList.add('hidden'); // Hide mic & lang select
+            }
+        }
+        setupSpeechRecognition(); // Call the setup function
 
         // --- Universal API Call Function ---
         async function callApi(endpoint, body) {
