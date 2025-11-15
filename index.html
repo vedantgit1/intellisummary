@@ -11,7 +11,7 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Chart.js (NEW) -->
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <!-- Inter Font -->
@@ -122,6 +122,28 @@
             100% {
                 transform: rotate(360deg);
             }
+        }
+
+        /* Quiz answer button styles */
+        .quiz-option-btn {
+            background-color: #374151; /* gray-700 */
+            border: 1px solid #4b5563; /* gray-600 */
+        }
+        .quiz-option-btn.selected {
+            background-color: #4f46e5; /* indigo-600 */
+            border-color: #6366f1; /* indigo-500 */
+        }
+        .quiz-option-btn.correct {
+            background-color: #166534; /* green-800 */
+            border-color: #22c55e; /* green-500 */
+        }
+        .quiz-option-btn.incorrect {
+            background-color: #991b1b; /* red-800 */
+            border-color: #ef4444; /* red-500 */
+        }
+        .quiz-option-btn:disabled {
+            opacity: 0.8;
+            cursor: not-allowed;
         }
     </style>
 </head>
@@ -254,9 +276,9 @@
                             </div>
 
                             <!-- Output Tabs -->
-                            <div class_="">
+                            <div class="">
                                 <div class="border-b border-gray-700">
-                                    <nav id="output-tabs" class="-mb-px flex space-x-4" aria-label="Tabs">
+                                    <nav id="output-tabs" class="-mb-px flex space-x-4 overflow-x-auto" aria-label="Tabs">
                                         <!-- Tabs will be dynamically inserted here -->
                                     </nav>
                                 </div>
@@ -521,6 +543,7 @@
             let selectedFile = null;
             let selectedPersona = null;
             let fileTextContent = null; // Store text from file
+            let chartInstance = null; // To hold the chart object for destruction
 
             // --- State Validation ---
             function validateState() {
@@ -672,6 +695,12 @@
                 loadingState.classList.add('hidden');
                 inputState.classList.remove('hidden');
 
+                // Destroy old chart if it exists
+                if (chartInstance) {
+                    chartInstance.destroy();
+                    chartInstance = null;
+                }
+
                 // Reset state
                 selectedFile = null;
                 selectedPersona = null;
@@ -679,27 +708,19 @@
                 fileUpload.value = null; // Clear file input
                 textInput.value = '';
                 dropzoneText.textContent = 'Drag & Drop your .TXT file here';
+                dropzoneText.classList.remove('gradient-text', 'font-bold');
                 personaBtns.forEach(b => b.classList.remove('selected'));
                 validateState();
             });
             
-            // --- NEW: Call Gemini API ---
+            // --- UPDATED: Call Gemini API (via our backend) ---
             async function callGeminiAPI(text, persona) {
-                const apiKey = ""; // Will be handled by the environment
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-
-                const { systemInstruction, userPrompt, schema } = getPromptAndSchema(text, persona);
+                // NEW: Call our OWN backend function
+                const apiUrl = '/api/generate';
 
                 const payload = {
-                    contents: [{ parts: [{ text: userPrompt }] }],
-                    systemInstruction: {
-                        parts: [{ text: systemInstruction }]
-                    },
-                    generationConfig: {
-                        responseMimeType: "application/json",
-                        responseSchema: schema,
-                        temperature: 0.2
-                    }
+                    text: text,
+                    persona: persona
                 };
 
                 // Add exponential backoff for retries
@@ -716,12 +737,13 @@
                         break; // Success
                     } else if (response.status === 429 || response.status >= 500) {
                         // Retry on rate limit or server error
+                        console.warn(`API request failed with status ${response.status}. Retrying in ${delay}ms...`);
                         await new Promise(resolve => setTimeout(resolve, delay));
                         delay *= 2;
                     } else {
                         // Don't retry on bad request (400) or auth issues (401/403)
                         const errorBody = await response.json();
-                        throw new Error(errorBody.error?.message || `HTTP error! status: ${response.status}`);
+                        throw new Error(errorBody.error || `HTTP error! status: ${response.status}`);
                     }
                 }
 
@@ -731,98 +753,17 @@
 
                 const result = await response.json();
                 
-                if (result.candidates && result.candidates[0].content?.parts?.[0]?.text) {
-                    const jsonText = result.candidates[0].content.parts[0].text;
-                    return JSON.parse(jsonText);
-                } else {
-                    throw new Error('Invalid response structure from AI.');
-                }
+                // The backend already parsed the JSON, so we just return the result
+                return result;
             }
 
-            // --- NEW: Get Prompts and Schemas ---
+            // --- NO LONGER NEEDED: Get Prompts and Schemas ---
+            // This function is now in api/generate.js
+            /*
             function getPromptAndSchema(text, persona) {
-                const systemInstruction = "You are an expert document analyst. Your task is to process the given text and return a structured JSON response based on the user's persona. Be concise and accurate.";
-                let userPrompt = "";
-                let schema = {};
-
-                switch (persona) {
-                    case 'business':
-                        userPrompt = `Analyze the following document. Extract 1-2 key insights, data for a bar chart (e.g., revenue vs. expenses, or another key trend), and a data table of 3-5 key metrics. Document: ${text}`;
-                        schema = {
-                            type: "OBJECT",
-                            properties: {
-                                "keyInsights": { type: "STRING" },
-                                "chartData": {
-                                    type: "OBJECT",
-                                    properties: {
-                                        "labels": { type: "ARRAY", items: { type: "STRING" } },
-                                        "datasets": {
-                                            type: "ARRAY",
-                                            items: {
-                                                type: "OBJECT",
-                                                properties: {
-                                                    "label": { type: "STRING" },
-                                                    "data": { type: "ARRAY", items: { type: "NUMBER" } },
-                                                    "backgroundColor": { type: "STRING" }
-                                                }
-                                            }
-                                        }
-                                    }
-                                },
-                                "tableData": {
-                                    type: "ARRAY",
-                                    items: {
-                                        type: "OBJECT",
-                                        properties: {
-                                            "metric": { type: "STRING" },
-                                            "value": { type: "STRING" },
-                                            "change": { type: "STRING" }
-                                        }
-                                    }
-                                }
-                            }
-                        };
-                        break;
-                    case 'student':
-                        userPrompt = `Analyze the following document. Simplify the 2-3 most complex concepts with fun analogies (use emojis!), and create one multiple-choice quiz question with 3 options. Document: ${text}`;
-                        schema = {
-                            type: "OBJECT",
-                            properties: {
-                                "simplifiedConcepts": {
-                                    type: "ARRAY",
-                                    items: {
-                                        type: "OBJECT",
-                                        properties: {
-                                            "concept": { type: "STRING" },
-                                            "explanation": { type: "STRING" }
-                                        }
-                                    }
-                                },
-                                "quiz": {
-                                    type: "OBJECT",
-                                    properties: {
-                                        "question": { type: "STRING" },
-                                        "options": { type: "ARRAY", items: { type: "STRING" } },
-                                        "answerIndex": { type: "INTEGER" }
-                                    }
-                                }
-                            }
-                        };
-                        break;
-                    case 'summary':
-                    default:
-                        userPrompt = `Analyze the following document. Provide 3-5 key bullet points and a concise full summary. Document: ${text}`;
-                        schema = {
-                            type: "OBJECT",
-                            properties: {
-                                "keyPoints": { type: "ARRAY", items: { type: "STRING" } },
-                                "fullSummary": { type: "STRING" }
-                            }
-                        };
-                        break;
-                }
-                return { systemInstruction, userPrompt, schema };
+                ...
             }
+            */
 
             // --- Updated: Display REAL Output ---
             function displayRealOutput(response, persona) {
@@ -832,14 +773,21 @@
                 tabsContainer.innerHTML = '';
                 contentContainer.innerHTML = '';
 
+                // Destroy old chart if it exists
+                if (chartInstance) {
+                    chartInstance.destroy();
+                    chartInstance = null;
+                }
+
                 // Define all possible tabs
                 const allTabs = [
-                    { id: 'summary', name: 'Quick Summary' },
-                    { id: 'student', name: 'Study Buddy' },
-                    { id: 'business', name: 'Business Analyst' }
+                    { id: 'business', name: 'Business Analyst', color: 'purple' },
+                    { id: 'student', name: 'Study Buddy', color: 'pink' },
+                    { id: 'summary', name: 'Quick Summary', color: 'blue' }
                 ];
                 
                 let contentHtml = '';
+                let activeTabId = persona;
 
                 // Generate content based on the *actual* response
                 try {
@@ -847,7 +795,7 @@
                         case 'business':
                             contentHtml = `
                                 <h3 class="text-lg font-semibold text-white mb-3">Key Data Insights</h3>
-                                <p class="text-gray-300 mb-4">${response.keyInsights}</p>
+                                <p class="text-gray-300 mb-4">${response.keyInsights.replace(/\n/g, '<br>')}</p>
                                 
                                 <h3 class="text-lg font-semibold text-white mb-3">Data Visualization</h3>
                                 <div class="w-full bg-gray-800 p-4 rounded-lg">
@@ -855,164 +803,189 @@
                                 </div>
                                 
                                 <h3 class="text-lg font-semibold text-white mt-6 mb-3">Extracted Data Table</h3>
-                                <table class="w-full text-left text-sm text-gray-300">
-                                    <thead class="bg-gray-800 text-xs text-gray-400 uppercase">
-                                        <tr>
-                                            <th scope="col" class="py-3 px-4 rounded-l-lg">Metric</th>
-                                            <th scope="col" class="py-3 px-4">Value</th>
-                                            <th scope="col" class="py-3 px-4 rounded-r-lg">Change</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-gray-700">
-                                        ${response.tableData.map(row => `
-                                            <tr class="bg-gray-900">
-                                                <td class="py-3 px-4 font-medium">${row.metric}</td>
-                                                <td class="py-3 px-4">${row.value}</td>
-                                                <td class="py-3 px-4 ${row.change.startsWith('+') ? 'text-green-400' : 'text-red-400'}">${row.change}</td>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full min-w-max text-left text-sm text-gray-300">
+                                        <thead class="bg-gray-800 text-xs text-gray-400 uppercase">
+                                            <tr>
+                                                <th scope="col" class="py-3 px-4 rounded-l-lg">Metric</th>
+                                                <th scope="col" class="py-3 px-4">Value</th>
+                                                <th scope="col" class="py-3 px-4 rounded-r-lg">Change</th>
                                             </tr>
-                                        `).join('')}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-700">
+                                            ${response.tableData.map(row => `
+                                                <tr class="bg-gray-900 hover:bg-gray-800">
+                                                    <td class="py-3 px-4 font-medium">${row.metric}</td>
+                                                    <td class="py-3 px-4">${row.value}</td>
+                                                    <td class="py-3 px-4 ${row.change.startsWith('+') ? 'text-green-400' : (row.change.startsWith('-') ? 'text-red-400' : '')}">${row.change}</td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
                             `;
                             break;
                         case 'student':
                             contentHtml = `
                                 <h3 class="text-lg font-semibold text-white mb-3">Simplified Concepts 🧠</h3>
-                                <ul class="space-y-3 text-gray-300 list-disc list-inside">
+                                <ul class="space-y-4 text-gray-300">
                                     ${response.simplifiedConcepts.map(item => `
-                                        <li><strong>${item.concept}:</strong> ${item.explanation}</li>
+                                        <li class="bg-gray-800 p-4 rounded-lg">
+                                            <strong class="text-white">${item.concept}</strong><br>
+                                            ${item.explanation}
+                                        </li>
                                     `).join('')}
                                 </ul>
                                 
-                                <h3 class="text-lg font-semibold text-white mt-6 mb-3">Quick Quiz 🧐</h3>
-                                <div class="bg-gray-800 p-4 rounded-lg">
-                                    <p class="font-medium text-white">${response.quiz.question}</p>
-                                    <div class="space-y-2 mt-2">
-                                        ${response.quiz.options.map((opt, index) => `
-                                            <button class="quiz-option block w-full text-left p-2 rounded bg-gray-700 hover:bg-gray-600 transition-colors text-sm" data-index="${index}" data-answer="${response.quiz.answerIndex}">
-                                                ${String.fromCharCode(65 + index)}) ${opt}
+                                <h3 class="text-lg font-semibold text-white mt-6 mb-3">Pop Quiz! 💡</h3>
+                                <div id="quiz-container" class="bg-gray-800 p-4 rounded-lg" data-answer-index="${response.quiz.answerIndex}">
+                                    <p class="font-semibold text-white mb-3">${response.quiz.question}</p>
+                                    <div id="quiz-options" class="flex flex-col space-y-2">
+                                        ${response.quiz.options.map((option, index) => `
+                                            <button class="quiz-option-btn text-left w-full p-3 rounded-lg transition-colors hover:bg-gray-700" data-index="${index}">
+                                                ${option}
                                             </button>
                                         `).join('')}
                                     </div>
-                                    <p class="quiz-feedback text-sm mt-3 h-4"></p>
+                                    <p id="quiz-feedback" class="text-sm mt-3 h-4"></p>
                                 </div>
                             `;
                             break;
                         case 'summary':
                         default:
+                            activeTabId = 'summary'; // Ensure default
                             contentHtml = `
                                 <h3 class="text-lg font-semibold text-white mb-3">Key Points</h3>
                                 <ul class="space-y-2 text-gray-300 list-disc list-inside">
-                                    ${response.keyPoints.map(point => `<li>${point}</li>`).join('')}
+                                    ${response.keyPoints.map(item => `<li>${item}</li>`).join('')}
                                 </ul>
+                                
                                 <h3 class="text-lg font-semibold text-white mt-6 mb-3">Full Summary</h3>
-                                <p class="text-gray-300 leading-relaxed">
-                                    ${response.fullSummary}
-                                </p>
+                                <p class="text-gray-300 leading-relaxed">${response.fullSummary.replace(/\n/g, '<br>')}</p>
                             `;
                             break;
                     }
-                } catch (e) {
-                    console.error("Error parsing AI response:", e);
-                    contentHtml = `<p class="text-red-400">Error: The AI returned data in an unexpected format.</p>`;
-                }
 
-                // Create tabs
-                allTabs.forEach(tab => {
-                    const tabBtn = document.createElement('button');
-                    tabBtn.dataset.tabId = tab.id;
-                    tabBtn.className = `output-tab-btn py-3 px-4 font-medium text-sm rounded-t-lg border-b-2 transition-colors`;
-                    tabBtn.textContent = tab.name;
+                    // --- Create Tabs ---
+                    allTabs.forEach(tab => {
+                        const isActive = tab.id === activeTabId;
+                        const activeClasses = isActive ? `border-${tab.color}-400 text-${tab.color}-400` : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500';
+                        
+                        const tabBtn = document.createElement('button');
+                        tabBtn.className = `whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${activeClasses}`;
+                        tabBtn.textContent = tab.name;
+                        tabBtn.dataset.tabId = tab.id;
+
+                        // Only the active persona has content, others are disabled
+                        if (!isActive) {
+                            tabBtn.disabled = true;
+                            tabBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                            tabBtn.title = "Run a new analysis to see this view";
+                        }
+                        
+                        tabsContainer.appendChild(tabBtn);
+                    });
                     
-                    if (tab.id === persona) {
-                        tabBtn.classList.add('border-purple-500', 'text-purple-400');
-                    } else {
-                        // Disable tabs that don't have data
-                        tabBtn.classList.add('border-transparent', 'text-gray-700', 'cursor-not-allowed', 'opacity-50');
-                        tabBtn.disabled = true;
+                    contentContainer.innerHTML = contentHtml;
+
+                    // --- Post-Render Actions ---
+                    
+                    // If Business, create chart
+                    if (persona === 'business') {
+                        // Ensure chartData exists and is valid
+                        if (response.chartData && response.chartData.labels && response.chartData.datasets) {
+                            createChart(response.chartData);
+                        } else {
+                            console.error('Invalid chart data received from AI:', response.chartData);
+                            contentContainer.querySelector('#outputChart').parentElement.innerHTML = '<p class="text-gray-400">Could not generate chart from the provided text.</p>';
+                        }
                     }
-                    tabsContainer.appendChild(tabBtn);
-                });
-
-                // Create content
-                contentContainer.innerHTML = contentHtml;
-
-                // --- Post-render logic ---
-
-                // If it's a business chart, render it
-                if (persona === 'business' && response.chartData) {
-                    const ctx = document.getElementById('outputChart').getContext('2d');
                     
-                    // Add background colors if AI didn't provide them
-                    const defaultColors = ['rgba(168, 85, 247, 0.6)', 'rgba(236, 72, 153, 0.6)'];
-                    response.chartData.datasets.forEach((dataset, index) => {
-                        if (!dataset.backgroundColor) {
-                            dataset.backgroundColor = defaultColors[index % defaultColors.length];
-                        }
-                    });
-                    
-                    new Chart(ctx, {
-                        type: 'bar',
-                        data: response.chartData,
-                        options: {
-                            responsive: true,
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    ticks: { color: '#9ca3af' },
-                                    grid: { color: '#374151' }
-                                },
-                                x: {
-                                    ticks: { color: '#9ca3af' },
-                                    grid: { color: '#374151' }
-                                }
-                            },
-                            plugins: {
-                                legend: {
-                                    labels: { color: '#d1d5db' }
-                                }
-                            }
-                        }
-                    });
-                }
-                
-                // If it's a student quiz, add click listeners
-                if (persona === 'student') {
-                    document.querySelectorAll('.quiz-option').forEach(btn => {
-                        btn.addEventListener('click', () => {
-                            const selectedIndex = btn.dataset.index;
-                            const answerIndex = btn.dataset.answer;
-                            const feedback = btn.closest('.bg-gray-800').querySelector('.quiz-feedback');
+                    // If Student, add quiz logic
+                    if (persona === 'student') {
+                        const quizContainer = document.getElementById('quiz-container');
+                        const optionsContainer = document.getElementById('quiz-options');
+                        const feedback = document.getElementById('quiz-feedback');
+                        const answerIndex = parseInt(quizContainer.dataset.answerIndex, 10);
+
+                        optionsContainer.addEventListener('click', (e) => {
+                            const selectedBtn = e.target.closest('.quiz-option-btn');
+                            if (!selectedBtn || selectedBtn.disabled) return;
                             
-                            // Reset styles
-                            btn.parentElement.querySelectorAll('.quiz-option').forEach(b => {
-                                b.classList.remove('bg-green-500', 'bg-red-500', 'text-white');
-                                b.classList.add('bg-gray-700');
-                            });
+                            const selectedIndex = parseInt(selectedBtn.dataset.index, 10);
+                            const allBtns = optionsContainer.querySelectorAll('.quiz-option-btn');
 
+                            // Disable all buttons
+                            allBtns.forEach(btn => btn.disabled = true);
+
+                            // Show feedback
                             if (selectedIndex === answerIndex) {
-                                btn.classList.add('bg-green-500', 'text-white');
+                                selectedBtn.classList.add('correct');
                                 feedback.textContent = 'Correct! 🎉';
-                                feedback.classList.add('text-green-400');
-                                feedback.classList.remove('text-red-400');
+                                feedback.className = 'text-sm mt-3 h-4 text-green-400';
                             } else {
-                                btn.classList.add('bg-red-500', 'text-white');
-                                feedback.textContent = 'Not quite, try again!';
-                                feedback.classList.add('text-red-400');
-                                feedback.classList.remove('text-green-400');
+                                selectedBtn.classList.add('incorrect');
+                                allBtns[answerIndex].classList.add('correct');
+                                feedback.textContent = 'Not quite! The correct answer is highlighted.';
+                                feedback.className = 'text-sm mt-3 h-4 text-red-400';
                             }
                         });
-                    });
+                    }
+                } catch (e) {
+                    console.error('Error displaying output:', e, 'Response was:', response);
+                    contentContainer.innerHTML = `<p class="text-red-400">An error occurred while trying to display the AI's response. It might be malformed. Please check the console.</p>`;
                 }
+            }
 
-                // NOTE: We are not adding tab-switching logic because
-                // the AI only generates data for the *selected* persona.
-                // To enable tab-switching, you'd need to re-call the API
-                // for each persona, which costs more.
+            // --- Chart.js Function ---
+            function createChart(data) {
+                const ctx = document.getElementById('outputChart').getContext('2d');
+                
+                // Use a default color if AI doesn't provide one
+                data.datasets.forEach(dataset => {
+                    dataset.backgroundColor = dataset.backgroundColor || 'rgba(168, 85, 247, 0.6)'; // Purple-500 with opacity
+                    dataset.borderColor = dataset.backgroundColor.replace('0.6', '1');
+                    dataset.borderWidth = 1;
+                    dataset.hoverBackgroundColor = dataset.backgroundColor.replace('0.6', '0.8');
+                });
+
+                chartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    color: '#9CA3AF' // gray-400
+                                },
+                                grid: {
+                                    color: '#374151' // gray-700
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: '#9CA3AF' // gray-400
+                                },
+                                grid: {
+                                    color: '#374151' // gray-700
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: '#D1D5DB' // gray-300
+                                }
+                            }
+                        }
+                    }
+                });
             }
 
         });
     </script>
-
 </body>
 </html>
