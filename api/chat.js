@@ -20,9 +20,11 @@ export default async function handler(request, response) {
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
         // Build the system instruction for the AI
+        // --- THIS IS THE FIX ---
         const systemInstruction = `You are an expert AI assistant. You have already analyzed the document provided below and are now answering follow-up questions from the user.
 - Your goal is to answer the user's questions based *only* on the content of the document.
-- If the answer is not in the document, say "I could not find that information in the document."
+- **NEW RULE: You MUST respond in the same language as the user's most recent question.**
+- If the answer is not in the document, say "I could not find that information in the document." (or the equivalent in the user's language).
 - Be concise and helpful.
 - The user's chat history is provided for context.
 
