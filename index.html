@@ -339,14 +339,20 @@
                                     </div>
                                     <!-- Tools: Translate & Copy -->
                                     <div class="flex items-center space-x-2 mt-3 sm:mt-0">
+                                        <!-- NEW: Language list updated -->
                                         <select id="translate-select" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block p-2">
                                             <option value="">Translate...</option>
                                             <option value="Spanish">Spanish</option>
                                             <option value="French">French</option>
                                             <option value="German">German</option>
                                             <option value="Japanese">Japanese</option>
-                                            <option value="Mandarin">Mandarin</option>
+                                            <option value="Mandarin Chinese">Mandarin Chinese</option>
                                             <option value="Hindi">Hindi</option>
+                                            <option value="Marathi">Marathi</option>
+                                            <option value="Portuguese">Portuguese</option>
+                                            <option value="Russian">Russian</option>
+                                            <option value="Arabic">Arabic</option>
+                                            <option value="Italian">Italian</option>
                                         </select>
                                         <button id="copy-btn" title="Copy to Clipboard" class="p-2 rounded-lg text-gray-400 bg-gray-700 hover:bg-gray-600 hover:text-white transition-colors">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
@@ -754,13 +760,13 @@
             inputState.classList.add('hidden');
 
             const script = document.createElement('script');
-            // UPDATED URL to a more recent, stable version
+            // *** NEW FIX: Using a more recent and stable CDN link ***
             script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
             
             script.onload = () => {
                 console.log('pdf.js library loaded successfully.');
                 // NOW it's safe to set the worker
-                // UPDATED URL for the worker
+                // *** NEW FIX: Matching worker URL to the library version ***
                 pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
                 isPdfLibLoading = false;
                 // Now, process the file
@@ -1373,19 +1379,21 @@
                 const results = await Promise.all(promises);
 
                 // Re-find elements and replace text
+                // *** THIS IS THE TRANSLATION FIX ***
                 outputContent.querySelectorAll('[data-translate]').forEach((el, index) => {
-                    // --- THIS IS THE FIX ---
-                    // Check for null/undefined, but allow empty strings ""
+                    // Check if the result is valid (not null/undefined)
                     if (results[index] != null) { 
                         el.textContent = results[index];
                     } else {
-                        el.textContent = originalTexts[index]; // Fallback
+                        // If translation failed for some reason, put back the original
+                        el.textContent = originalTexts[index];
                     }
                 });
 
             } catch (error) {
                 console.error('Translate error:', error);
                 alert(`Translation failed: ${error.message}`);
+                // Restore original content on failure
                 outputContent.innerHTML = originalTabHtml[currentActiveTabId];
                 // Re-run post-render
                 const response = originalResponseData[currentActiveTabId];
