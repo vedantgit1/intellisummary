@@ -16,6 +16,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
+    <!-- 
+      NEW: Only load Chart.js. 
+      pdf.js will be loaded on-demand when a PDF is uploaded.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+
     <style>
         /* Custom styles for the "mind-blowing" look */
         body {
@@ -87,11 +93,39 @@
             box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
         }
         
-        /* Custom loading spinner */
+        /* --- NEW: Circular Progress Bar --- */
+        .progress-ring {
+            width: 60px;
+            height: 60px;
+            position: relative;
+        }
+
+        .progress-ring__circle {
+            transition: 0.35s stroke-dashoffset;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+            stroke: #a855f7; /* purple-500 */
+        }
+
+        .progress-ring__background {
+            stroke: #374151; /* gray-700 */
+        }
+        
+        .progress-ring__text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1rem;
+            font-weight: 600;
+            color: #d1d5db; /* gray-300 */
+        }
+        
+        /* Standard loader (for AI analysis) */
         .loader {
-            width: 48px;
-            height: 48px;
-            border: 3px solid #FFF;
+            width: 60px;
+            height: 60px;
+            border: 4px solid #374151; /* gray-700 */
             border-radius: 50%;
             display: inline-block;
             position: relative;
@@ -102,13 +136,12 @@
             content: '';  
             box-sizing: border-box;
             position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            width: 40px;
-            height: 40px;
+            left: -4px;
+            top: -4px;
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
-            border: 3px solid;
+            border: 4px solid;
             border-color: #a855f7 transparent; /* purple-500 */
         }
 
@@ -270,9 +303,12 @@
                     
                     <!-- App Loading State -->
                     <div id="app-loading-state" class="hidden p-8 md:p-16 text-center">
-                        <div class="loader mx-auto"></div>
+                        <!-- This div will contain either the progress ring or the loader -->
+                        <div id="loader-container" class="w-16 h-16 mx-auto flex items-center justify-center">
+                            <!-- The loader (spinner or progress ring) will be injected here by JS -->
+                        </div>
                         <p id="loading-text" class="mt-6 text-lg font-semibold text-white">Analyzing your document...</p>
-                        <p class="text-gray-400">Making sense of the data and generating insights.</p>
+                        <p id="loading-subtext" class="text-gray-400">Making sense of the data and generating insights.</p>
                     </div>
 
                     <!-- App Output State -->
@@ -571,752 +607,858 @@
             </div>
         </div>
     </footer>
-
-    <!-- Library Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.107/pdf.min.js"></script>
     
-    <!-- JavaScript for Interactivity -->
+    <!-- 
+      Main Application Script
+      This will run after the HTML is parsed.
+    -->
     <script>
-        // This event listener is the key fix. It waits for the HTML to be ready
-        // so that all the `getElementById` calls will work.
-        document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', () => {
+        
+        // --- Mobile Menu ---
+        const menuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        menuBtn.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
 
-            // --- Set PDF.js worker source ---
-            // We set this once, but we check if pdfjsLib exists *when the user uploads a file*
-            if (typeof pdfjsLib !== 'undefined') {
-                pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.107/pdf.worker.min.js";
+        // --- App Elements ---
+        const appContainer = document.getElementById('app-container');
+        const inputState = document.getElementById('app-input-state');
+        const loadingState = document.getElementById('app-loading-state');
+        const loadingText = document.getElementById('loading-text');
+        const loadingSubtext = document.getElementById('loading-subtext');
+        const loaderContainer = document.getElementById('loader-container');
+        const outputState = document.getElementById('app-output-state');
+        
+        const dropzone = document.getElementById('file-dropzone');
+        const fileUpload = document.getElementById('file-upload');
+        const dropzoneText = document.getElementById('dropzone-text');
+        const textInput = document.getElementById('text-input');
+        const personaBtns = document.querySelectorAll('.persona-btn');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const errorMessage = document.getElementById('error-message');
+        
+        // Output state elements
+        const startOverBtn = document.getElementById('start-over-btn');
+        const outputFilename = document.getElementById('output-filename');
+        const outputTabs = document.getElementById('output-tabs');
+        const outputContent = document.getElementById('output-content');
+        const translateSelect = document.getElementById('translate-select');
+        const copyBtn = document.getElementById('copy-btn');
+        const copySuccess = document.getElementById('copy-success');
+
+        // Chat elements
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const chatSubmitBtn = document.getElementById('chat-submit-btn');
+        const chatHistoryEl = document.getElementById('chat-history');
+        const chatErrorMessage = document.getElementById('chat-error-message');
+
+        // App State
+        let selectedFile = null;
+        let selectedPersona = null;
+        let fullDocumentText = null; 
+        let currentChatHistory = []; 
+        let currentChart = null; 
+        let originalTabHtml = {}; // Stores original HTML to reset translation
+        let originalResponseData = {}; // Stores original AI response for chart/quiz re-render
+        let currentActiveTabId = '';
+        let isTranslating = false;
+        let isPdfLibLoading = false; // NEW: Flag to prevent multiple loads
+
+        // --- Loader/Progress HTML ---
+        const standardLoaderHTML = `<div class="loader"></div>`;
+        const progressRingHTML = `
+            <div class="progress-ring">
+                <svg class="w-full h-full" viewBox="0 0 36 36">
+                    <path class="progress-ring__background"
+                        stroke-width="4"
+                        fill="none"
+                        d="M18 2.0845
+                        a 15.9155 15.9155 0 0 1 0 31.831
+                        a 15.9155 15.9155 0 0 1 0 -31.831"
+                    />
+                    <path class="progress-ring__circle"
+                        stroke-width="4"
+                        fill="none"
+                        stroke-dasharray="100, 100"
+                        stroke-dashoffset="100"
+                        d="M18 2.0845
+                        a 15.9155 15.9155 0 0 1 0 31.831
+                        a 15.9155 15.9155 0 0 1 0 -31.831"
+                    />
+                </svg>
+                <span id="progress-ring-text" class="progress-ring__text">0%</span>
+            </div>`;
+        
+        // --- State Validation ---
+        function validateState() {
+            const hasFile = selectedFile !== null;
+            const hasText = textInput.value.trim().length > 0;
+            const hasInput = hasFile || hasText;
+            const hasPersona = selectedPersona !== null;
+
+            if (hasInput && hasPersona) {
+                analyzeBtn.disabled = false;
+                analyzeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                errorMessage.textContent = '';
             } else {
-                console.warn("pdf.js library (pdfjsLib) is not loaded yet. Will check again at file upload.");
-                // This is not fatal, as the library might still be loading.
+                analyzeBtn.disabled = true;
+                analyzeBtn.classList.add('opacity-50', 'cursor-not-allowed');
             }
-
-            // --- Mobile Menu ---
-            const menuBtn = document.getElementById('mobile-menu-btn');
-            const mobileMenu = document.getElementById('mobile-menu');
-            menuBtn.addEventListener('click', () => {
-                mobileMenu.classList.toggle('hidden');
-            });
-
-            // --- App Elements ---
-            const appContainer = document.getElementById('app-container');
-            const inputState = document.getElementById('app-input-state');
-            const loadingState = document.getElementById('app-loading-state');
-            const loadingText = document.getElementById('loading-text');
-            const outputState = document.getElementById('app-output-state');
-            
-            const dropzone = document.getElementById('file-dropzone');
-            const fileUpload = document.getElementById('file-upload');
-            const dropzoneText = document.getElementById('dropzone-text');
-            const textInput = document.getElementById('text-input');
-            const personaBtns = document.querySelectorAll('.persona-btn');
-            const analyzeBtn = document.getElementById('analyze-btn');
-            const errorMessage = document.getElementById('error-message');
-            
-            // Output state elements
-            const startOverBtn = document.getElementById('start-over-btn');
-            const outputFilename = document.getElementById('output-filename');
-            const outputTabs = document.getElementById('output-tabs');
-            const outputContent = document.getElementById('output-content');
-            const translateSelect = document.getElementById('translate-select');
-            const copyBtn = document.getElementById('copy-btn');
-            const copySuccess = document.getElementById('copy-success');
-
-            // Chat elements
-            const chatForm = document.getElementById('chat-form');
-            const chatInput = document.getElementById('chat-input');
-            const chatSubmitBtn = document.getElementById('chat-submit-btn');
-            const chatHistoryEl = document.getElementById('chat-history');
-            const chatErrorMessage = document.getElementById('chat-error-message');
-
-            // App State
-            let selectedFile = null;
-            let selectedPersona = null;
-            let fullDocumentText = null; // Store text from file or paste
-            let currentChatHistory = []; // Stores { isUser: true, text: "..." }
-            let currentChart = null; // To destroy old charts
-            let originalOutputContent = {}; // To store untranslated HTML
-            let currentActiveTabId = '';
-            let isTranslating = false; // Prevent multiple translations
-
-            // --- State Validation ---
-            function validateState() {
-                const hasFile = selectedFile !== null;
-                const hasText = textInput.value.trim().length > 0;
-                const hasInput = hasFile || hasText;
-                const hasPersona = selectedPersona !== null;
-
-                if (hasInput && hasPersona) {
-                    analyzeBtn.disabled = false;
-                    analyzeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                    errorMessage.textContent = '';
-                } else {
-                    analyzeBtn.disabled = true;
-                    analyzeBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                }
-            }
+        }
  
-            // --- File Dropzone Logic ---
-            dropzone.addEventListener('click', () => fileUpload.click());
+        // --- File Dropzone Logic ---
+        // Attach listeners directly
+        dropzone.addEventListener('click', () => fileUpload.click());
+        fileUpload.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) handleFile(e.target.files[0]);
+        });
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, () => dropzone.classList.add('dragover'), false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, () => dropzone.classList.remove('dragover'), false);
+        });
+        
+        dropzone.addEventListener('drop', (e) => {
+            if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+        }, false);
 
-            fileUpload.addEventListener('change', (e) => {
-                if (e.target.files.length > 0) {
-                    handleFile(e.target.files[0]);
-                }
-            });
-            
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                dropzone.addEventListener(eventName, preventDefaults, false);
-            });
-            
-            function preventDefaults(e) {
-                e.preventDefault();
-                e.stopPropagation();
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // --- NEW "On-Demand" PDF Library Loader ---
+        function loadPdfLibraryAndProcess(file) {
+            // Check if we are already loading it
+            if (isPdfLibLoading) {
+                console.log('Already attempting to load pdf.js...');
+                return;
             }
-            
-            ['dragenter', 'dragover'].forEach(eventName => {
-                dropzone.addEventListener(eventName, () => dropzone.classList.add('dragover'), false);
-            });
-            
-            ['dragleave', 'drop'].forEach(eventName => {
-                dropzone.addEventListener(eventName, () => dropzone.classList.remove('dragover'), false);
-            });
-            
-            dropzone.addEventListener('drop', (e) => {
-                if (e.dataTransfer.files.length > 0) {
-                    handleFile(e.dataTransfer.files[0]);
-                }
-            }, false);
+            isPdfLibLoading = true;
 
-            function handleFile(file) {
-                // We accept .txt and .pdf
-                if (file.type !== 'text/plain' && file.type !== 'application/pdf') {
-                    errorMessage.textContent = 'Only .PDF and .TXT files are supported.';
-                    resetFileInput();
-                    return;
-                }
+            console.log('Loading pdf.js library...');
+            loadingText.textContent = 'Loading PDF Reader...'; // Show user
+            loadingSubtext.textContent = 'This happens once on your first PDF.';
+            loaderContainer.innerHTML = standardLoaderHTML;
+            loadingState.classList.remove('hidden');
+            inputState.classList.add('hidden');
 
-                selectedFile = file;
-                dropzoneText.textContent = file.name;
-                dropzoneText.classList.add('gradient-text', 'font-bold');
-                textInput.value = ''; // Clear text input if file is added
-                textInput.disabled = true;
-                errorMessage.textContent = '';
-                
-                // Read the file content
-                loadingText.textContent = 'Reading file...';
-                loadingState.classList.remove('hidden');
-                inputState.classList.add('hidden');
+            const script = document.createElement('script');
+            // UPDATED URL to a more recent, stable version
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+            
+            script.onload = () => {
+                console.log('pdf.js library loaded successfully.');
+                // NOW it's safe to set the worker
+                // UPDATED URL for the worker
+                pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+                isPdfLibLoading = false;
+                // Now, process the file
+                processPdf(file);
+            };
+            
+            script.onerror = () => {
+                console.error('FATAL: Failed to load pdf.js library from CDN.');
+                errorMessage.textContent = 'Failed to load PDF library. Please refresh and try again.';
+                loadingState.classList.add('hidden');
+                inputState.classList.remove('hidden');
+                resetFileInput();
+                isPdfLibLoading = false;
+            };
+            document.body.appendChild(script);
+        }
 
-                if (file.type === 'text/plain') {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        fullDocumentText = e.target.result;
-                        validateState();
-                        loadingState.classList.add('hidden');
-                        inputState.classList.remove('hidden');
-                    };
-                    reader.onerror = () => {
-                        errorMessage.textContent = 'Error reading file.';
-                        resetFileInput();
-                    };
-                    reader.readAsText(file);
-                } else if (file.type === 'application/pdf') {
-                    // This is the critical check
-                    if (typeof pdfjsLib === 'undefined' || !pdfjsLib.GlobalWorkerOptions.workerSrc) {
-                        console.error("FATAL: pdf.js library (pdfjsLib) failed to load.");
-                        errorMessage.textContent = 'PDF library failed to load. Please refresh the page.';
-                        
-                        // Try to set workerSrc again, just in case
-                        if(typeof pdfjsLib !== 'undefined') {
-                            pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.107/pdf.worker.min.js";
-                        }
-                        
-                        resetFileInput();
-                        return;
+        // --- NEW: Extracted PDF Processing Logic ---
+        async function processPdf(file) {
+            console.log('Processing PDF...');
+            
+            // Set UI for processing
+            loadingState.classList.remove('hidden');
+            inputState.classList.add('hidden');
+            loaderContainer.innerHTML = progressRingHTML; // Add progress ring
+            loadingText.textContent = 'Reading file (0%)...';
+            loadingSubtext.textContent = 'Please wait...';
+
+            const progressCircle = document.querySelector('.progress-ring__circle');
+            const progressText = document.getElementById('progress-ring-text');
+            const radius = 15.9155; // Must match the SVG path
+            const circumference = 2 * Math.PI * radius;
+            
+            // Ensure elements exist before styling
+            if(progressCircle) {
+                progressCircle.style.strokeDasharray = `${circumference} ${circumference}`;
+            } else {
+                console.error("Could not find progress circle element!");
+            }
+
+            const reader = new FileReader();
+
+            // Progress Event Handler
+            reader.onprogress = (event) => {
+                if (event.lengthComputable) {
+                    const percent = Math.round((event.loaded / event.total) * 100);
+                    loadingText.textContent = `Reading file (${percent}%)...`;
+                    if(progressCircle && progressText) {
+                        const offset = circumference - (percent / 100) * circumference;
+                        progressCircle.style.strokeDashoffset = offset;
+                        progressText.textContent = `${percent}%`;
                     }
-                    
-                    const reader = new FileReader();
-                    reader.onload = async (e) => {
-                        try {
-                            const pdfData = new Uint8Array(e.target.result);
-                            const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
-                            let textContent = '';
-                            for (let i = 1; i <= pdf.numPages; i++) {
-                                const page = await pdf.getPage(i);
-                                const text = await page.getTextContent();
-                                textContent += text.items.map(s => s.str).join(' ') + '\n';
-                            }
-                            fullDocumentText = textContent;
-                            validateState();
-                        } catch (pdfError) {
-                            console.error('PDF parsing error:', pdfError);
-                            errorMessage.textContent = 'Error parsing PDF file. It may be corrupt or encrypted.';
-                            resetFileInput();
-                        } finally {
-                            loadingState.classList.add('hidden');
-                            inputState.classList.remove('hidden');
-                        }
-                    };
-                    reader.onerror = () => {
-                        errorMessage.textContent = 'Error reading file.';
-                        resetFileInput();
-                    };
-                    reader.readAsArrayBuffer(file);
                 }
-            }
+            };
 
-            function resetFileInput() {
-                selectedFile = null;
-                fullDocumentText = null;
-                fileUpload.value = null; // Clear file input
-                textInput.value = '';
-                textInput.disabled = false;
-                dropzoneText.textContent = 'Drag & Drop your .PDF or .TXT file';
-                dropzoneText.classList.remove('gradient-text', 'font-bold');
-                loadingState.classList.add('hidden');
-                inputState.classList.remove('hidden');
-                validateState();
-            }
-
-            // --- Text Input Logic ---
-            textInput.addEventListener('input', () => {
-                if (textInput.value.trim().length > 0) {
-                    if (selectedFile) resetFileInput(); // Clear file if user types
-                    fullDocumentText = textInput.value.trim();
-                } else {
-                    fullDocumentText = null;
-                }
-                validateState();
-            });
-
-            // --- Persona Selection ---
-            personaBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    personaBtns.forEach(b => b.classList.remove('selected'));
-                    btn.classList.add('selected');
-                    selectedPersona = btn.dataset.persona;
+            reader.onload = async (e) => {
+                loadingText.textContent = 'Parsing PDF...'; // Update text
+                loadingSubtext.textContent = 'This may take a moment for large files.';
+                
+                try {
+                    const pdfData = new Uint8Array(e.target.result);
+                    const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+                    let textContent = '';
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const text = await page.getTextContent();
+                        textContent += text.items.map(s => s.str).join(' ') + '\n';
+                    }
+                    fullDocumentText = textContent;
                     validateState();
-                });
-            });
-
-            // --- Analyze Button Click ---
-            analyzeBtn.addEventListener('click', async () => {
-                if (analyzeBtn.disabled) {
-                    errorMessage.textContent = 'Please add a file (or paste text) and select a mode.';
-                    return;
-                }
-                
-                // 1. Show Loading
-                inputState.classList.add('hidden');
-                outputState.classList.add('hidden');
-                loadingText.textContent = 'Analyzing your document...';
-                loadingState.classList.remove('hidden');
-                errorMessage.textContent = '';
-                
-                // 2. Set filename in output
-                outputFilename.textContent = selectedFile ? selectedFile.name : 'Pasted Text';
-
-                // 3. Get input text (already stored in fullDocumentText)
-                if (!fullDocumentText) {
-                    errorMessage.textContent = 'Could not read input text.';
-                    loadingState.classList.add('hidden');
-                    inputState.classList.remove('hidden');
-                    return;
-                }
-
-                // 4. Reset chat history
-                currentChatHistory = [];
-                chatHistoryEl.innerHTML = '<div class="chat-bubble chat-bubble-ai">Ask me a follow-up question about your document!</div>';
-
-                try {
-                    // 5. Call the REAL AI API
-                    const aiResponse = await callApi('/api/generate', {
-                        text: fullDocumentText,
-                        persona: selectedPersona
-                    });
-
-                    // 6. Show Output
-                    loadingState.classList.add('hidden');
-                    outputState.classList.remove('hidden');
-                    displayRealOutput(aiResponse, selectedPersona);
-
-                } catch (error) {
-                    console.error('Error calling Gemini API:', error);
-                    errorMessage.textContent = `AI Error: ${error.message}. Please try again.`;
+                } catch (pdfError) {
+                    console.error('PDF parsing error:', pdfError);
+                    errorMessage.textContent = 'Error parsing PDF file. It may be corrupt or encrypted.';
+                    resetFileInput();
+                } finally {
                     loadingState.classList.add('hidden');
                     inputState.classList.remove('hidden');
                 }
-            });
+            };
+            reader.onerror = () => {
+                errorMessage.textContent = 'Error reading file.';
+                resetFileInput();
+            };
+            reader.readAsArrayBuffer(file);
+        }
 
-            // --- Start Over Button ---
-            startOverBtn.addEventListener('click', () => {
-                outputState.classList.add('hidden');
+        // --- MODIFIED: handleFile Function ---
+        function handleFile(file) {
+            if (file.type !== 'text/plain' && file.type !== 'application/pdf') {
+                errorMessage.textContent = 'Only .PDF and .TXT files are supported.';
+                resetFileInput();
+                return;
+            }
+
+            // Set file info for both types
+            selectedFile = file;
+            dropzoneText.textContent = file.name;
+            dropzoneText.classList.add('gradient-text', 'font-bold');
+            textInput.value = ''; 
+            textInput.disabled = true;
+            errorMessage.textContent = '';
+            
+            if (file.type === 'application/pdf') {
+                if (typeof pdfjsLib === 'undefined') {
+                    // It's not loaded. Go fetch it.
+                    loadPdfLibraryAndProcess(file);
+                } else {
+                    // It's already loaded, just process
+                    processPdf(file);
+                }
+                return; // Stop here, PDF logic will handle the rest
+            } 
+            
+            // --- This part is for .TXT files only ---
+            loadingState.classList.remove('hidden');
+            inputState.classList.add('hidden');
+            loadingSubtext.textContent = 'Please wait...';
+            loaderContainer.innerHTML = standardLoaderHTML;
+            loadingText.textContent = 'Reading file...';
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                fullDocumentText = e.target.result;
+                validateState();
                 loadingState.classList.add('hidden');
                 inputState.classList.remove('hidden');
-                
-                // Reset state
-                selectedFile = null;
-                selectedPersona = null;
+            };
+            reader.onerror = () => {
+                errorMessage.textContent = 'Error reading file.';
+                resetFileInput();
+            };
+            reader.readAsText(file);
+        }
+
+        function resetFileInput() {
+            selectedFile = null;
+            fullDocumentText = null;
+            fileUpload.value = null; 
+            textInput.value = '';
+            textInput.disabled = false;
+            dropzoneText.textContent = 'Drag & Drop your .PDF or .TXT file';
+            dropzoneText.classList.remove('gradient-text', 'font-bold');
+            loadingState.classList.add('hidden');
+            inputState.classList.remove('hidden');
+            validateState();
+        }
+
+        // --- Text Input Logic ---
+        textInput.addEventListener('input', () => {
+            if (textInput.value.trim().length > 0) {
+                if (selectedFile) resetFileInput(); 
+                fullDocumentText = textInput.value.trim();
+            } else {
                 fullDocumentText = null;
-                fileUpload.value = null;
-                textInput.value = '';
-                textInput.disabled = false;
-                dropzoneText.textContent = 'Drag & Drop your .PDF or .TXT file';
-                dropzoneText.classList.remove('gradient-text', 'font-bold');
+            }
+            validateState();
+        });
+
+        // --- Persona Selection ---
+        personaBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
                 personaBtns.forEach(b => b.classList.remove('selected'));
-                if (currentChart) {
-                    currentChart.destroy();
-                    currentChart = null;
-                }
-                originalOutputContent = {};
-                translateSelect.value = '';
+                btn.classList.add('selected');
+                selectedPersona = btn.dataset.persona;
                 validateState();
             });
+        });
+
+        // --- Analyze Button Click ---
+        analyzeBtn.addEventListener('click', async () => {
+            if (analyzeBtn.disabled) {
+                errorMessage.textContent = 'Please add a file (or paste text) and select a mode.';
+                return;
+            }
             
-            // --- Display REAL Output ---
-            function displayRealOutput(response, persona) {
-                outputTabs.innerHTML = '';
-                outputContent.innerHTML = '';
-                originalOutputContent = {}; // Clear cache
-                translateSelect.value = ''; // Reset translate dropdown
+            inputState.classList.add('hidden');
+            outputState.classList.add('hidden');
+            loaderContainer.innerHTML = standardLoaderHTML; // Use standard spinner for AI
+            loadingText.textContent = 'Analyzing your document...';
+            loadingSubtext.textContent = 'Making sense of the data and generating insights.';
+            loadingState.classList.remove('hidden');
+            errorMessage.textContent = '';
+            
+            outputFilename.textContent = selectedFile ? selectedFile.name : 'Pasted Text';
 
-                // Define all possible tabs
-                const allTabs = [
-                    { id: 'summary', name: 'Quick Summary' },
-                    { id: 'student', name: 'Study Buddy' },
-                    { id: 'business', name: 'Business Analyst' }
-                ];
+            if (!fullDocumentText) {
+                errorMessage.textContent = 'Could not read input text.';
+                loadingState.classList.add('hidden');
+                inputState.classList.remove('hidden');
+                return;
+            }
+
+            currentChatHistory = [];
+            chatHistoryEl.innerHTML = '<div class="chat-bubble chat-bubble-ai">Ask me a follow-up question about your document!</div>';
+
+            try {
+                const aiResponse = await callApi('/api/generate', {
+                    text: fullDocumentText,
+                    persona: selectedPersona
+                });
                 
-                let contentHtml = '';
+                originalResponseData[selectedPersona] = aiResponse; // Store full response
 
-                try {
-                    switch (persona) {
-                        case 'business':
-                            contentHtml = `
-                                <h3 class="text-lg font-semibold text-white mb-3" data-translate>Key Data Insights</h3>
-                                <p class="text-gray-300 mb-4" data-translate>${response.keyInsights}</p>
-                                
-                                <h3 class="text-lg font-semibold text-white mb-3" data-translate>Data Visualization</h3>
-                                <div class="chart-container bg-gray-800 p-4 rounded-lg">
-                                    <canvas id="outputChart"></canvas>
-                                </div>
-                                
-                                <h3 class="text-lg font-semibold text-white mt-6 mb-3" data-translate>Extracted Data Table</h3>
-                                <div class="overflow-x-auto">
-                                <table class="w-full min-w-max text-left text-sm text-gray-300">
-                                    <thead class="bg-gray-800 text-xs text-gray-400 uppercase">
-                                        <tr>
-                                            <th scope="col" class="py-3 px-4 rounded-l-lg" data-translate>Metric</th>
-                                            <th scope="col" class="py-3 px-4" data-translate>Value</th>
-                                            <th scope="col" class="py-3 px-4 rounded-r-lg" data-translate>Change</th>
+                loadingState.classList.add('hidden');
+                outputState.classList.remove('hidden');
+                displayRealOutput(aiResponse, selectedPersona);
+
+            } catch (error) {
+                console.error('Error calling Gemini API:', error);
+                errorMessage.textContent = `AI Error: ${error.message}. Please try again.`;
+                loadingState.classList.add('hidden');
+                inputState.classList.remove('hidden');
+            }
+        });
+
+        // --- Start Over Button ---
+        startOverBtn.addEventListener('click', () => {
+            outputState.classList.add('hidden');
+            loadingState.classList.add('hidden');
+            inputState.classList.remove('hidden');
+            
+            selectedFile = null;
+            selectedPersona = null;
+            fullDocumentText = null;
+            fileUpload.value = null;
+            textInput.value = '';
+            textInput.disabled = false;
+            dropzoneText.textContent = 'Drag & Drop your .PDF or .TXT file';
+            dropzoneText.classList.remove('gradient-text', 'font-bold');
+            personaBtns.forEach(b => b.classList.remove('selected'));
+            if (currentChart) {
+                currentChart.destroy();
+                currentChart = null;
+            }
+            originalTabHtml = {};
+            originalResponseData = {};
+            translateSelect.value = '';
+            validateState();
+        });
+        
+        // --- Display REAL Output ---
+        function displayRealOutput(response, persona) {
+            outputTabs.innerHTML = '';
+            outputContent.innerHTML = '';
+            if (!originalTabHtml[persona]) { // Only clear cache if it's a new generation
+                originalTabHtml = {};
+            }
+            translateSelect.value = ''; 
+
+            const allTabs = [
+                { id: 'summary', name: 'Quick Summary' },
+                { id: 'student', name: 'Study Buddy' },
+                { id: 'business', name: 'Business Analyst' }
+            ];
+            
+            let contentHtml = '';
+
+            try {
+                switch (persona) {
+                    case 'business':
+                        contentHtml = `
+                            <h3 class="text-lg font-semibold text-white mb-3" data-translate>Key Data Insights</h3>
+                            <p class="text-gray-300 mb-4" data-translate>${response.keyInsights}</p>
+                            
+                            <h3 class="text-lg font-semibold text-white mb-3" data-translate>Data Visualization</h3>
+                            <div class="chart-container bg-gray-800 p-4 rounded-lg">
+                                <canvas id="outputChart"></canvas>
+                            </div>
+                            
+                            <h3 class="text-lg font-semibold text-white mt-6 mb-3" data-translate>Extracted Data Table</h3>
+                            <div class="overflow-x-auto">
+                            <table class="w-full min-w-max text-left text-sm text-gray-300">
+                                <thead class="bg-gray-800 text-xs text-gray-400 uppercase">
+                                    <tr>
+                                        <th scope="col" class="py-3 px-4 rounded-l-lg" data-translate>Metric</th>
+                                        <th scope="col" class="py-3 px-4" data-translate>Value</th>
+                                        <th scope="col" class="py-3 px-4 rounded-r-lg" data-translate>Change</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-700">
+                                    ${response.tableData.map(row => `
+                                        <tr class="bg-gray-900">
+                                            <td class="py-3 px-4 font-medium" data-translate>${row.metric}</td>
+                                            <td class="py-3 px-4" data-translate>${row.value}</td>
+                                            <td class="py-3 px-4 ${String(row.change).startsWith('+') ? 'text-green-400' : String(row.change).startsWith('-') ? 'text-red-400' : ''}" data-translate>${row.change}</td>
                                         </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-gray-700">
-                                        ${response.tableData.map(row => `
-                                            <tr class="bg-gray-900">
-                                                <td class="py-3 px-4 font-medium" data-translate>${row.metric}</td>
-                                                <td class="py-3 px-4" data-translate>${row.value}</td>
-                                                <td class="py-3 px-4 ${String(row.change).startsWith('+') ? 'text-green-400' : String(row.change).startsWith('-') ? 'text-red-400' : ''}" data-translate>${row.change}</td>
-                                            </tr>
-                                        `).join('')}
-                                    </tbody>
-                                </table>
-                                </div>
-                            `;
-                            break;
-                        case 'student':
-                            contentHtml = `
-                                <h3 class="text-lg font-semibold text-white mb-3" data-translate>Simplified Concepts 🧠</h3>
-                                <div class="space-y-4 text-gray-300">
-                                    ${response.simplifiedConcepts.map(item => `
-                                        <div class="bg-gray-800 p-4 rounded-lg">
-                                            <strong class="text-purple-300" data-translate>${item.concept}:</strong>
-                                            <p data-translate>${item.explanation}</p>
-                                        </div>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                            </div>
+                        `;
+                        break;
+                    case 'student':
+                        contentHtml = `
+                            <h3 class="text-lg font-semibold text-white mb-3" data-translate>Simplified Concepts 🧠</h3>
+                            <div class="space-y-4 text-gray-300">
+                                ${response.simplifiedConcepts.map(item => `
+                                    <div class="bg-gray-800 p-4 rounded-lg">
+                                        <strong class="text-purple-300" data-translate>${item.concept}:</strong>
+                                        <p data-translate>${item.explanation}</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            
+                            <h3 class="text-lg font-semibold text-white mt-6 mb-3" data-translate>Check Your Knowledge! 🎓</h3>
+                            <div id="quiz-container" class="bg-gray-800 p-4 rounded-lg text-gray-300">
+                                <p class="font-semibold mb-3" data-translate>${response.quiz.question}</p>
+                                <div class="space-y-2">
+                                    ${response.quiz.options.map((option, index) => `
+                                        <button class="quiz-option block w-full text-left p-3 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors" data-index="${index}" data-translate>
+                                            ${option}
+                                        </button>
                                     `).join('')}
                                 </div>
-                                
-                                <h3 class="text-lg font-semibold text-white mt-6 mb-3" data-translate>Check Your Knowledge! 🎓</h3>
-                                <div id="quiz-container" class="bg-gray-800 p-4 rounded-lg text-gray-300">
-                                    <p class="font-semibold mb-3" data-translate>${response.quiz.question}</p>
-                                    <div class="space-y-2">
-                                        ${response.quiz.options.map((option, index) => `
-                                            <button class="quiz-option block w-full text-left p-3 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors" data-index="${index}" data-translate>
-                                                ${option}
-                                            </button>
-                                        `).join('')}
-                                    </div>
-                                    <p id="quiz-feedback" class="mt-3 text-sm h-4"></p>
-                                </div>
-                            `;
-                            break;
-                        case 'summary':
-                        default:
-                            contentHtml = `
-                                <h3 class="text-lg font-semibold text-white mb-3" data-translate>Key Points</h3>
-                                <ul class="space-y-2 text-gray-300 list-disc list-inside">
-                                    ${response.keyPoints.map(point => `<li data-translate>${point}</li>`).join('')}
-                                </ul>
-                                <h3 class="text-lg font-semibold text-white mt-6 mb-3" data-translate>Full Summary</h3>
-                                <p class="text-gray-300 whitespace-pre-wrap" data-translate>${response.fullSummary}</p>
-                            `;
-                            break;
-                    }
-                } catch (e) {
-                    console.error("Error displaying output:", e, "Response:", response);
-                    contentHtml = `<p class="text-red-400">Error: The AI response was not in the expected format. Please try again.</p>`;
+                                <p id="quiz-feedback" class="mt-3 text-sm h-4"></p>
+                            </div>
+                        `;
+                        break;
+                    case 'summary':
+                    default:
+                        contentHtml = `
+                            <h3 class="text-lg font-semibold text-white mb-3" data-translate>Key Points</h3>
+                            <ul class="space-y-2 text-gray-300 list-disc list-inside">
+                                ${response.keyPoints.map(point => `<li data-translate>${point}</li>`).join('')}
+                            </ul>
+                            <h3 class="text-lg font-semibold text-white mt-6 mb-3" data-translate>Full Summary</h3>
+                            <p class="text-gray-300 whitespace-pre-wrap" data-translate>${response.fullSummary}</p>
+                        `;
+                        break;
                 }
+            } catch (e) {
+                console.error("Error displaying output:", e, "Response:", response);
+                contentHtml = `<p class="text-red-400">Error: The AI response was not in the expected format. Please try again.</p>`;
+            }
 
-                // Create tabs
-                allTabs.forEach(tab => {
-                    const tabBtn = document.createElement('button');
-                    tabBtn.className = `py-3 px-4 font-semibold text-sm rounded-t-lg transition-colors border-b-2`;
-                    tabBtn.textContent = tab.name;
-                    tabBtn.dataset.tabId = tab.id;
-                    
-                    if (tab.id === persona) {
-                        tabBtn.classList.add('text-purple-400', 'border-purple-400');
-                        tabBtn.classList.remove('text-gray-400', 'border-transparent', 'hover:text-gray-200', 'hover:border-gray-500');
-                        outputContent.innerHTML = contentHtml;
-                        originalOutputContent[tab.id] = contentHtml; // Store original
-                        currentActiveTabId = tab.id;
-                    } else {
-                        tabBtn.classList.add('text-gray-400', 'border-transparent', 'hover:text-gray-200', 'hover:border-gray-500');
-                    }
-                    tabBtn.addEventListener('click', () => switchTab(tab.id, persona));
-                    outputTabs.appendChild(tabBtn);
-                });
+            // Create tabs
+            allTabs.forEach(tab => {
+                const tabBtn = document.createElement('button');
+                tabBtn.className = `py-3 px-4 font-semibold text-sm rounded-t-lg transition-colors border-b-2`;
+                tabBtn.textContent = tab.name;
+                tabBtn.dataset.tabId = tab.id;
+                
+                if (tab.id === persona) {
+                    tabBtn.classList.add('text-purple-400', 'border-purple-400');
+                    tabBtn.classList.remove('text-gray-400', 'border-transparent', 'hover:text-gray-200', 'hover:border-gray-500');
+                    outputContent.innerHTML = contentHtml;
+                    originalTabHtml[tab.id] = contentHtml; // Store original HTML
+                    currentActiveTabId = tab.id;
+                } else {
+                    tabBtn.classList.add('text-gray-400', 'border-transparent', 'hover:text-gray-200', 'hover:border-gray-500');
+                }
+                tabBtn.addEventListener('click', () => switchTab(tab.id));
+                outputTabs.appendChild(tabBtn);
+            });
 
-                // Post-render actions
-                if (persona === 'business' && response.chartData) {
-                    // Needs a slight delay for canvas to be in DOM
+            // Post-render actions
+            if (persona === 'business' && response.chartData) {
+                // Check if Chart.js is loaded
+                if(typeof Chart === 'undefined') {
+                    console.error("Chart.js is not loaded. Cannot render chart.");
+                    const chartContainer = outputContent.querySelector('.chart-container');
+                    if(chartContainer) chartContainer.innerHTML = `<p class="text-red-400">Error: Chart library failed to load.</p>`;
+                } else {
                     setTimeout(() => renderChart(response.chartData), 100);
                 }
-                if (persona === 'student' && response.quiz) {
-                    setupQuiz(response.quiz);
-                }
             }
+            if (persona === 'student' && response.quiz) {
+                setupQuiz(response.quiz);
+            }
+        }
 
-            function renderChart(chartData) {
-                if (currentChart) {
-                    currentChart.destroy();
-                }
-                const ctx = document.getElementById('outputChart');
-                if (!ctx) return;
-                
-                try {
-                    currentChart = new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: chartData.labels,
-                            datasets: chartData.datasets.map(ds => ({
-                                label: ds.label,
-                                data: ds.data,
-                                backgroundColor: ds.backgroundColor || 'rgba(168, 85, 247, 0.5)',
-                                borderColor: ds.backgroundColor ? ds.backgroundColor.replace('0.5', '1') : 'rgba(168, 85, 247, 1)',
-                                borderWidth: 1
-                            }))
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    ticks: { color: '#9CA3AF' },
-                                    grid: { color: '#374151' }
-                                },
-                                x: {
-                                    ticks: { color: '#9CA3AF' },
-                                    grid: { color: '#374151' }
-                                }
+        function renderChart(chartData) {
+            if (currentChart) {
+                currentChart.destroy();
+            }
+            const ctx = document.getElementById('outputChart');
+            if (!ctx) return;
+            
+            try {
+                currentChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: chartData.labels,
+                        datasets: chartData.datasets.map(ds => ({
+                            label: ds.label,
+                            data: ds.data,
+                            backgroundColor: ds.backgroundColor || 'rgba(168, 85, 247, 0.5)',
+                            borderColor: ds.backgroundColor ? ds.backgroundColor.replace('0.5', '1') : 'rgba(168, 85, 247, 1)',
+                            borderWidth: 1
+                        }))
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { color: '#9CA3AF' },
+                                grid: { color: '#374151' }
                             },
-                            plugins: {
-                                legend: {
-                                    labels: { color: '#D1D5DB' }
-                                }
+                            x: {
+                                ticks: { color: '#9CA3AF' },
+                                grid: { color: '#374151' }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                labels: { color: '#D1D5DB' }
                             }
                         }
-                    });
-                } catch (e) {
-                    console.error("Chart.js error:", e);
-                    const chartContainer = outputContent.querySelector('.chart-container');
-                    if(chartContainer) {
-                        chartContainer.innerHTML = `<p class="text-red-400">Error rendering chart.</p>`;
-                    }
-                }
-            }
-
-            function setupQuiz(quiz) {
-                const quizContainer = document.getElementById('quiz-container');
-                if (!quizContainer) return;
-                
-                const feedbackEl = document.getElementById('quiz-feedback');
-                
-                quizContainer.addEventListener('click', (e) => {
-                    const optionBtn = e.target.closest('.quiz-option');
-                    if (!optionBtn) return;
-                    
-                    // Clear previous feedback
-                    document.querySelectorAll('.quiz-option').forEach(btn => {
-                        btn.classList.remove('bg-green-700', 'bg-red-700');
-                        btn.classList.add('bg-gray-700');
-                    });
-                    
-                    const selectedIndex = parseInt(optionBtn.dataset.index, 10);
-                    if (selectedIndex === quiz.answerIndex) {
-                        optionBtn.classList.remove('bg-gray-700');
-                        optionBtn.classList.add('bg-green-700');
-                        feedbackEl.textContent = 'Correct! 🎉';
-                        feedbackEl.className = 'mt-3 text-sm h-4 text-green-400';
-                    } else {
-                        optionBtn.classList.remove('bg-gray-700');
-                        optionBtn.classList.add('bg-red-700');
-                        feedbackEl.textContent = 'Not quite. Try again!';
-                        feedbackEl.className = 'mt-3 text-sm h-4 text-red-400';
-                        // Highlight correct answer
-                        const correctBtn = quizContainer.querySelector(`[data-index="${quiz.answerIndex}"]`);
-                        if (correctBtn) {
-                            correctBtn.classList.remove('bg-gray-700');
-                            correctBtn.classList.add('bg-green-700');
-                        }
                     }
                 });
-            }
-
-            async function switchTab(tabId, originalPersona) {
-                if (currentActiveTabId === tabId || isTranslating) return; // Already on this tab or busy
-
-                // Update tab visual state
-                outputTabs.querySelectorAll('button').forEach(btn => {
-                    if (btn.dataset.tabId === tabId) {
-                        btn.classList.add('text-purple-400', 'border-purple-400');
-                        btn.classList.remove('text-gray-400', 'border-transparent', 'hover:text-gray-200', 'hover:border-gray-500');
-                    } else {
-                        btn.classList.remove('text-purple-400', 'border-purple-400');
-                        btn.classList.add('text-gray-400', 'border-transparent', 'hover:text-gray-200', 'hover:border-gray-500');
-                    }
-                });
-
-                currentActiveTabId = tabId;
-                translateSelect.value = ''; // Reset translation
-
-                // Check if we have original content for this tab
-                if (originalOutputContent[tabId]) {
-                    outputContent.innerHTML = originalOutputContent[tabId];
-                } else {
-                    // We need to generate content for this tab
-                    outputContent.innerHTML = `<div class="flex justify-center items-center p-8"><div class="loader"></div></div>`;
-                    
-                    try {
-                        const aiResponse = await callApi('/api/generate', {
-                            text: fullDocumentText,
-                            persona: tabId
-                        });
-                        
-                        // We must be on the same tab to render
-                        if (currentActiveTabId !== tabId) return;
-                        
-                        // This is simplified. We'll just render the new content.
-                        // The full `displayRealOutput` is too complex here.
-                        // A better way would be to store the *response* not the *HTML*.
-                        // For now, let's just re-run the main display function.
-                        displayRealOutput(aiResponse, tabId);
-                        
-                    } catch (error) {
-                        console.error('Error switching tab:', error);
-                        outputContent.innerHTML = `<p class="text-red-400">Error loading this view: ${error.message}</p>`;
-                    }
+            } catch (e) {
+                console.error("Chart.js error:", e);
+                const chartContainer = outputContent.querySelector('.chart-container');
+                if(chartContainer) {
+                    chartContainer.innerHTML = `<p class="text-red-400">Error rendering chart.</p>`;
                 }
             }
+        }
 
-            // --- NEW: Chat Logic ---
-            chatForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const question = chatInput.value.trim();
-                if (!question) return;
-
-                chatInput.value = '';
-                chatErrorMessage.textContent = '';
-                addChatMessage(question, true);
-
-                // Add loading bubble
-                const loadingBubble = document.createElement('div');
-                loadingBubble.className = 'chat-bubble chat-bubble-ai opacity-50';
-                loadingBubble.textContent = '...';
-                chatHistoryEl.appendChild(loadingBubble);
-                chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
-
-                try {
-                    const response = await callApi('/api/chat', {
-                        question: question,
-                        documentText: fullDocumentText,
-                        chatHistory: currentChatHistory
-                    });
-
-                    // Add AI response
-                    addChatMessage(response.answer, false);
-                    loadingBubble.remove(); // Remove loading bubble
-
-                } catch (error) {
-                    console.error('Chat error:', error);
-                    chatErrorMessage.textContent = `Error: ${error.message}`;
-                    loadingBubble.remove();
-                }
-            });
-
-            function addChatMessage(text, isUser) {
-                const bubble = document.createElement('div');
-                bubble.className = `chat-bubble ${isUser ? 'chat-bubble-user' : 'chat-bubble-ai'}`;
-                
-                // Sanitize and format text (simple version)
-                const formattedText = text
-                    .replace(/</g, "&lt;")
-                    .replace(/>/g, "&gt;")
-                    .replace(/\n/g, '<br>'); // Keep newlines
-                
-                bubble.innerHTML = `<div class="chat-message-text">${formattedText}</div>`;
-                
-                chatHistoryEl.appendChild(bubble);
-                chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
-                
-                // Add to state
-                currentChatHistory.push({ isUser: isUser, text: text });
-            }
-
-            // --- NEW: Translate Logic ---
-            translateSelect.addEventListener('change', async (e) => {
-                if (isTranslating) return;
-                isTranslating = true;
-                
-                const language = e.target.value;
-                
-                // Always restore from original before translating or resetting
-                if (originalOutputContent[currentActiveTabId]) {
-                    outputContent.innerHTML = originalOutputContent[currentActiveTabId];
-                    // Re-run post-render for chart/quiz
-                    if (currentActiveTabId === 'business') {
-                        const chartData = originalOutputContent[currentActiveTabId].match(/<canvas id="outputChart"><\/canvas>/);
-                        if(chartData) {
-                            // This is very tricky without storing the original response object.
-                            // For now, we accept chart is lost on translate.
-                        }
-                    }
-                    if (currentActiveTabId === 'student') {
-                        // Same for quiz
-                    }
-                }
-
-                if (!language) {
-                    isTranslating = false;
-                    return; // Just reset to original
-                }
-
-                // Get all translatable elements
-                const elementsToTranslate = outputContent.querySelectorAll('[data-translate]');
-                if (elementsToTranslate.length === 0) {
-                    isTranslating = false;
-                    return;
-                }
-
-                const originalTexts = Array.from(elementsToTranslate).map(el => el.textContent);
-                const loadingIndicator = '...';
-                elementsToTranslate.forEach(el => el.textContent = loadingIndicator);
-
-                try {
-                    const translatedTexts = [];
-                    for (const text of originalTexts) {
-                        if (text.trim() === '') {
-                            translatedTexts.push('');
-                            continue;
-                        }
-                        const response = await callApi('/api/translate', {
-                            text: text,
-                            targetLanguage: language
-                        });
-                        translatedTexts.push(response.translatedText);
-                        // No rate limit, let Vercel handle concurrency
-                    }
-
-                    // Re-find elements and replace text
-                    outputContent.querySelectorAll('[data-translate]').forEach((el, index) => {
-                        if (translatedTexts[index]) {
-                            el.textContent = translatedTexts[index];
-                        }
-                    });
-
-                } catch (error) {
-                    console.error('Translate error:', error);
-                    alert(`Translation failed: ${error.message}`);
-                    // Restore original content on error
-                    outputContent.innerHTML = originalOutputContent[currentActiveTabId];
-                } finally {
-                    isTranslating = false;
-                }
-            });
+        function setupQuiz(quiz) {
+            const quizContainer = document.getElementById('quiz-container');
+            if (!quizContainer) return;
             
-            // --- NEW: Copy Logic ---
-            copyBtn.addEventListener('click', () => {
-                // Get text from the active tab
-                const contentToCopy = outputContent.innerText;
+            const feedbackEl = document.getElementById('quiz-feedback');
+            
+            quizContainer.addEventListener('click', (e) => {
+                const optionBtn = e.target.closest('.quiz-option');
+                if (!optionBtn) return;
                 
-                // Use clipboard API if available (more modern)
-                if (navigator.clipboard) {
-                    navigator.clipboard.writeText(contentToCopy).then(() => {
-                        copySuccess.classList.remove('hidden');
-                        setTimeout(() => copySuccess.classList.add('hidden'), 2000);
-                    }).catch(err => {
-                        console.error('Failed to copy text: ', err);
-                        alert('Failed to copy text.');
-                    });
+                document.querySelectorAll('.quiz-option').forEach(btn => {
+                    btn.classList.remove('bg-green-700', 'bg-red-700');
+                    btn.classList.add('bg-gray-700');
+                });
+                
+                const selectedIndex = parseInt(optionBtn.dataset.index, 10);
+                if (selectedIndex === quiz.answerIndex) {
+                    optionBtn.classList.remove('bg-gray-700');
+                    optionBtn.classList.add('bg-green-700');
+                    feedbackEl.textContent = 'Correct! 🎉';
+                    feedbackEl.className = 'mt-3 text-sm h-4 text-green-400';
                 } else {
-                    // Fallback for older browsers/insecure contexts
-                    const textArea = document.createElement('textarea');
-                    textArea.value = contentToCopy;
-                    document.body.appendChild(textArea);
-                    textArea.select();
-                    try {
-                        document.execCommand('copy');
-                        copySuccess.classList.remove('hidden');
-                        setTimeout(() => copySuccess.classList.add('hidden'), 2000);
-                    } catch (err) {
-                        console.error('Failed to copy text: ', err);
-                        alert('Failed to copy text.');
+                    optionBtn.classList.remove('bg-gray-700');
+                    optionBtn.classList.add('bg-red-700');
+                    feedbackEl.textContent = 'Not quite. Try again!';
+                    feedbackEl.className = 'mt-3 text-sm h-4 text-red-400';
+                    const correctBtn = quizContainer.querySelector(`[data-index="${quiz.answerIndex}"]`);
+                    if (correctBtn) {
+                        correctBtn.classList.remove('bg-gray-700');
+                        correctBtn.classList.add('bg-green-700');
                     }
-                    document.body.removeChild(textArea);
+                }
+            });
+        }
+
+        async function switchTab(tabId) {
+            if (currentActiveTabId === tabId || isTranslating) return; 
+
+            outputTabs.querySelectorAll('button').forEach(btn => {
+                if (btn.dataset.tabId === tabId) {
+                    btn.classList.add('text-purple-400', 'border-purple-400');
+                    btn.classList.remove('text-gray-400', 'border-transparent', 'hover:text-gray-200', 'hover:border-gray-500');
+                } else {
+                    btn.classList.remove('text-purple-400', 'border-purple-400');
+                    btn.classList.add('text-gray-400', 'border-transparent', 'hover:text-gray-200', 'hover:border-gray-500');
                 }
             });
 
-            // --- NEW: Universal API Call Function ---
-            async function callApi(endpoint, body) {
-                // Add exponential backoff for retries
-                let response;
-                let delay = 1000;
-                for (let i = 0; i < 5; i++) {
-                    response = await fetch(endpoint, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(body)
-                    });
+            currentActiveTabId = tabId;
+            translateSelect.value = ''; 
 
-                    if (response.ok) {
-                        return response.json(); // Success
-                    } else if (response.status === 429 || response.status >= 500) {
-                        // Retry on rate limit or server error
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                        delay *= 2;
-                    } else {
-                        // Don't retry on bad request (400) or auth issues (401/403)
-                        const errorBody = await response.json();
-                        throw new Error(errorBody.error || `HTTP error! status: ${response.status}`);
+            if (originalTabHtml[tabId]) {
+                outputContent.innerHTML = originalTabHtml[tabId];
+                // Re-render chart/quiz
+                const response = originalResponseData[tabId];
+                if (response) {
+                    if (tabId === 'business' && response.chartData) {
+                        if(typeof Chart !== 'undefined') {
+                           setTimeout(() => renderChart(response.chartData), 100);
+                        }
+                    }
+                    if (tabId === 'student' && response.quiz) {
+                        setupQuiz(response.quiz);
                     }
                 }
-                throw new Error('API request failed after all retries.');
+            } else {
+                outputContent.innerHTML = `<div class="flex justify-center items-center p-8"><div classs="loader"></div></div>`;
+                
+                try {
+                    const aiResponse = await callApi('/api/generate', {
+                        text: fullDocumentText,
+                        persona: tabId
+                    });
+                    
+                    if (currentActiveTabId !== tabId) return; // User switched again
+                    
+                    originalResponseData[tabId] = aiResponse; // Store new response
+                    displayRealOutput(aiResponse, tabId); // This will re-render
+                    
+                } catch (error) {
+                    console.error('Error switching tab:', error);
+                    outputContent.innerHTML = `<p class="text-red-400">Error loading this view: ${error.message}</p>`;
+                }
             }
-        
-        // Close the DOMContentLoaded wrapper
+        }
+
+        // --- Chat Logic ---
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const question = chatInput.value.trim();
+            if (!question) return;
+
+            chatInput.value = '';
+            chatErrorMessage.textContent = '';
+            addChatMessage(question, true);
+
+            const loadingBubble = document.createElement('div');
+            loadingBubble.className = 'chat-bubble chat-bubble-ai opacity-50';
+            loadingBubble.textContent = '...';
+            chatHistoryEl.appendChild(loadingBubble);
+            chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+
+            try {
+                const response = await callApi('/api/chat', {
+                    question: question,
+                    documentText: fullDocumentText,
+                    chatHistory: currentChatHistory
+                });
+
+                addChatMessage(response.answer, false);
+                loadingBubble.remove(); 
+
+            } catch (error) {
+                console.error('Chat error:', error);
+                chatErrorMessage.textContent = `Error: ${error.message}`;
+                loadingBubble.remove();
+            }
         });
+
+        function addChatMessage(text, isUser) {
+            const bubble = document.createElement('div');
+            bubble.className = `chat-bubble ${isUser ? 'chat-bubble-user' : 'chat-bubble-ai'}`;
+            
+            const formattedText = text
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/\n/g, '<br>'); 
+            
+            bubble.innerHTML = `<div class="chat-message-text">${formattedText}</div>`;
+            
+            chatHistoryEl.appendChild(bubble);
+            chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+            
+            currentChatHistory.push({ isUser: isUser, text: text });
+        }
+
+        // --- Translate Logic ---
+        translateSelect.addEventListener('change', async (e) => {
+            if (isTranslating) return;
+            isTranslating = true;
+            
+            const language = e.target.value;
+            
+            // Always restore from original HTML
+            if (originalTabHtml[currentActiveTabId]) {
+                outputContent.innerHTML = originalTabHtml[currentActiveTabId];
+                // Re-run post-render for chart/quiz
+                const response = originalResponseData[currentActiveTabId];
+                if (response) {
+                    if (currentActiveTabId === 'business' && response.chartData) {
+                         if(typeof Chart !== 'undefined') {
+                            setTimeout(() => renderChart(response.chartData), 100);
+                         }
+                    }
+                    if (currentActiveTabId === 'student' && response.quiz) {
+                        setupQuiz(response.quiz);
+                    }
+                }
+            }
+
+            if (!language) {
+                isTranslating = false;
+                return; // Just reset to original
+            }
+
+            const elementsToTranslate = outputContent.querySelectorAll('[data-translate]');
+            if (elementsToTranslate.length === 0) {
+                isTranslating = false;
+                return;
+            }
+
+            const originalTexts = Array.from(elementsToTranslate).map(el => el.textContent);
+            const loadingIndicator = '...';
+            elementsToTranslate.forEach(el => el.textContent = loadingIndicator);
+
+            try {
+                const translatedTexts = [];
+                // We can do this in parallel, Vercel will handle concurrency
+                const promises = originalTexts.map(text => {
+                    if (text.trim() === '') {
+                        return Promise.resolve(''); // Resolve empty strings immediately
+                    }
+                    return callApi('/api/translate', {
+                        text: text,
+                        targetLanguage: language
+                    }).then(response => response.translatedText);
+                });
+                
+                const results = await Promise.all(promises);
+
+                // Re-find elements and replace text
+                outputContent.querySelectorAll('[data-translate]').forEach((el, index) => {
+                    // --- THIS IS THE FIX ---
+                    // Check for null/undefined, but allow empty strings ""
+                    if (results[index] != null) { 
+                        el.textContent = results[index];
+                    } else {
+                        el.textContent = originalTexts[index]; // Fallback
+                    }
+                });
+
+            } catch (error) {
+                console.error('Translate error:', error);
+                alert(`Translation failed: ${error.message}`);
+                outputContent.innerHTML = originalTabHtml[currentActiveTabId];
+                // Re-run post-render
+                const response = originalResponseData[currentActiveTabId];
+                if (response) {
+                     if (currentActiveTabId === 'business' && response.chartData) {
+                         if(typeof Chart !== 'undefined') {
+                            setTimeout(() => renderChart(response.chartData), 100);
+                         }
+                    }
+                    if (currentActiveTabId === 'student' && response.quiz) {
+                        setupQuiz(response.quiz);
+                    }
+                }
+            } finally {
+                isTranslating = false;
+            }
+        });
+        
+        // --- Copy Logic ---
+        copyBtn.addEventListener('click', () => {
+            const contentToCopy = outputContent.innerText;
+            
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(contentToCopy).then(() => {
+                    copySuccess.classList.remove('hidden');
+                    setTimeout(() => copySuccess.classList.add('hidden'), 2000);
+                }).catch(err => {
+                    console.error('Failed to copy text: ', err);
+                    alert('Failed to copy text.');
+                });
+            } else {
+                const textArea = document.createElement('textarea');
+                textArea.value = contentToCopy;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    copySuccess.classList.remove('hidden');
+                    setTimeout(() => copySuccess.classList.add('hidden'), 2000);
+                } catch (err) {
+                    console.error('Failed to copy text: ', err);
+                    alert('Failed to copy text.');
+                }
+                document.body.removeChild(textArea);
+            }
+        });
+
+        // --- Universal API Call Function ---
+        async function callApi(endpoint, body) {
+            let response;
+            let delay = 1000;
+            for (let i = 0; i < 5; i++) {
+                response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                if (response.ok) {
+                    return response.json(); 
+                } else if (response.status === 429 || response.status >= 500) {
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2;
+                } else {
+                    const errorBody = await response.json();
+                    throw new Error(errorBody.error || `HTTP error! status: ${response.status}`);
+                }
+            }
+            throw new Error('API request failed after all retries.');
+        }
+    
+    }); // --- End of DOMContentLoaded ---
     </script>
+
 </body>
 </html>
