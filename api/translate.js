@@ -1,5 +1,20 @@
-// This is a Vercel Serverless Function (Node.js backend)
-// It translates a given block of text into a target language.
+// This API endpoint handles all translation requests.
+// It is now UPDATED with the paywall logic to check user status and count usage.
+
+import { db, auth } from './firebase-admin.js';
+import { FieldValue } from 'firebase-admin/firestore'; // Import FieldValue
+
+// --- Authentication Check Function ---
+async function verifyUser(request) {
+    // Looks for the 'Authorization: Bearer <token>' header sent from the frontend
+    const token = request.headers.authorization?.split('Bearer ')[1];
+    if (!token) {
+        throw new Error('401-unauthorized'); // Unauthorized, no token provided
+    }
+    // Verifies the token using Firebase Admin SDK
+    const decodedToken = await auth.verifyIdToken(token);
+    return decodedToken.uid; // Returns the user's ID
+}
 
 export default async function handler(request, response) {
     if (request.method !== 'POST') {
@@ -7,6 +22,25 @@ export default async function handler(request, response) {
     }
 
     try {
+        // 1. AUTHENTICATE AND CHECK PAYWALL
+        const userId = await verifyUser(request);
+        const userRef = db.collection('users').doc(userId);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+            return response.status(404).json({ error: 'User not found in database. Please sign out and sign in again.' });
+        }
+        
+        const userData = userDoc.data();
+        
+        // PAYWALL CHECK: Free user is limited to 5 uses
+        if (userData.plan === 'free' && (userData.usageCount || 0) >= 5) {
+            // Returns 402 (Payment Required) error code
+            return response.status(402).json({ error: 'Upgrade required. You have used all your 5 free credits.' });
+        }
+        // END PAYWALL CHECK
+
+        // 2. PROCESS AI REQUEST
         const { text, targetLanguage } = request.body;
         if (!text || !targetLanguage) {
             return response.status(400).json({ error: 'Missing text or target language' });
@@ -47,6 +81,15 @@ ${text}
         const result = await apiResponse.json();
 
         if (result.candidates && result.candidates[0].content?.parts?.[0]?.text) {
+            
+            // 3. INCREMENT USAGE (FOR FREE USERS ONLY)
+            if (userData.plan === 'free') {
+                // Safely increments the counter in Firestore
+                await userRef.update({ 
+                    usageCount: FieldValue.increment(1)
+                });
+            }
+            
             const translatedText = result.candidates[0].content.parts[0].text;
             return response.status(200).json({ translatedText: translatedText });
         } else {
@@ -55,6 +98,9 @@ ${text}
 
     } catch (error) {
         console.error('Server-side error:', error);
+        if (error.message.includes('401-unauthorized') || error.code?.startsWith('auth/')) {
+            return response.status(401).json({ error: 'Unauthorized. Please sign in.' });
+        }
         return response.status(500).json({ error: error.message || 'An unknown error occurred' });
     }
 }
