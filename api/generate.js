@@ -1,35 +1,57 @@
-// This is a Vercel Serverless Function (Node.js backend)
-// It will run on Vercel's servers, not in the user's browser.
+// This API endpoint handles all document analysis requests (Business Analyst, Student, Summary).
+// It now includes the paywall logic.
+
+import { db, auth } from './firebase-admin.js';
+import { FieldValue } from 'firebase-admin/firestore'; // Import FieldValue
+
+// --- Authentication Check Function ---
+async function verifyUser(request) {
+    // Looks for the 'Authorization: Bearer <token>' header
+    const token = request.headers.authorization?.split('Bearer ')[1];
+    if (!token) {
+        throw new Error('401-unauthorized'); // Unauthorized, no token provided
+    }
+    // Verifies the token using Firebase Admin SDK
+    const decodedToken = await auth.verifyIdToken(token);
+    return decodedToken.uid; // Returns the user's ID
+}
 
 export default async function handler(request, response) {
-    // 1. Only allow POST requests
     if (request.method !== 'POST') {
         return response.status(405).json({ error: 'Method Not Allowed' });
     }
 
     try {
-        // 2. Get the text and persona from the user's request
+        // 1. AUTHENTICATE AND CHECK PAYWALL
+        const userId = await verifyUser(request);
+        const userRef = db.collection('users').doc(userId);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+            return response.status(404).json({ error: 'User not found in database. Please sign out and sign in again.' });
+        }
+        
+        const userData = userDoc.data();
+        
+        // PAYWALL CHECK: Free user is limited to 5 uses
+        if (userData.plan === 'free' && (userData.usageCount || 0) >= 5) {
+            return response.status(402).json({ error: 'Upgrade required. You have used all your 5 free credits.' });
+        }
+        // END PAYWALL CHECK
+
+        // 2. PROCESS AI REQUEST
         const { text, persona } = request.body;
         if (!text || !persona) {
-            return response.status(400).json({ error: 'Missing text or persona' });
+            return response.status(400).json({ error: 'Missing document text or persona' });
         }
 
-        // 3. Get the *secret* API key from Vercel's Environment Variables
         const apiKey = process.env.GEMINI_API_KEY;
-        if (!apiKey) {
-            return response.status(500).json({ error: 'API key not configured' });
-        }
-
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-
-        // 4. Get the correct prompt and schema for the AI
         const { systemInstruction, userPrompt, schema } = getPromptAndSchema(text, persona);
 
         const payload = {
             contents: [{ parts: [{ text: userPrompt }] }],
-            systemInstruction: {
-                parts: [{ text: systemInstruction }]
-            },
+            systemInstruction: { parts: [{ text: systemInstruction }] },
             generationConfig: {
                 responseMimeType: "application/json",
                 responseSchema: schema,
@@ -37,7 +59,6 @@ export default async function handler(request, response) {
             }
         };
 
-        // 5. Call the Google AI API *from the backend*
         const apiResponse = await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -52,10 +73,15 @@ export default async function handler(request, response) {
 
         const result = await apiResponse.json();
 
-        // 6. Send the successful JSON response back to the user's browser
         if (result.candidates && result.candidates[0].content?.parts?.[0]?.text) {
+            
+            // 3. INCREMENT USAGE (FOR FREE USERS ONLY)
+            if (userData.plan === 'free') {
+                // Safely increments the counter in Firestore
+                await userRef.update({ usageCount: FieldValue.increment(1) });
+            }
+            
             const jsonText = result.candidates[0].content.parts[0].text;
-            // We parse it just to send the clean JSON object back
             return response.status(200).json(JSON.parse(jsonText));
         } else {
             return response.status(500).json({ error: 'Invalid response structure from AI' });
@@ -63,13 +89,14 @@ export default async function handler(request, response) {
 
     } catch (error) {
         console.error('Server-side error:', error);
+        if (error.message.includes('401-unauthorized') || error.code?.startsWith('auth/')) {
+            return response.status(401).json({ error: 'Unauthorized. Please sign in.' });
+        }
         return response.status(500).json({ error: error.message || 'An unknown error occurred' });
     }
 }
 
-
 // --- Helper Function ---
-// This builds the prompt and schema, just like in the old index.html
 function getPromptAndSchema(text, persona) {
     const systemInstruction = "You are an expert document analyst. Your task is to process the given text and return a structured JSON response based on the user's persona. Be concise and accurate.";
     let userPrompt = "";
