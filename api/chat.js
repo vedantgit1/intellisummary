@@ -6,7 +6,7 @@ import { FieldValue } from 'firebase-admin/firestore'; // Import FieldValue
 
 // --- Authentication Check Function ---
 async function verifyUser(request) {
-    // Looks for the 'Authorization: Bearer <token>' header
+    // Looks for the 'Authorization: Bearer <token>' header sent from the frontend
     const token = request.headers.authorization?.split('Bearer ')[1];
     if (!token) {
         throw new Error('401-unauthorized'); // Unauthorized, no token provided
@@ -35,6 +35,7 @@ export default async function handler(request, response) {
         
         // PAYWALL CHECK: Free user is limited to 5 uses
         if (userData.plan === 'free' && (userData.usageCount || 0) >= 5) {
+            // Returns 402 (Payment Required) error code
             return response.status(402).json({ error: 'Upgrade required. You have used all your 5 free credits.' });
         }
         // END PAYWALL CHECK
