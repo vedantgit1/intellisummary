@@ -649,7 +649,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mb-4 text-blue-400"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                         <h3 class="text-xl font-bold text-white">For Professionals</h3>
                         <p class="mt-2 text-gray-300">
-                            Cut your-reading time by 90%. Get the key insights from long reports, legal documents, news articles, and lengthy email threads in seconds. Stay informed, save hours.
+                            Cut your reading time by 90%. Get the key insights from long reports, legal documents, news articles, and lengthy email threads in seconds. Stay informed, save hours.
                         </p>
                     </div>
                 </div>
@@ -754,7 +754,7 @@
                             <li class="flex items-center"><svg class="w-5 h-5 text-purple-400 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>Priority Support</li>
                             <li class="flex items-center"><svg class="w-5 h-5 text-purple-400 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>Advanced Security & SSO</li>
                         </ul>
-                        <a href="#contact" class="mt-8 block w-full text-center py-3 px-5 rounded-lg font-semibold text-white bg-gray-700 hover:bg-gray-600 transition-colors">
+                        <a href="#" class="mt-8 block w-full text-center py-3 px-5 rounded-lg font-semibold text-white bg-gray-700 hover:bg-gray-600 transition-colors">
                             Contact Sales
                         </a>
                     </div>
@@ -867,7 +867,10 @@
             // This is replaced by Vercel with your Environment Variable
             // Note: This must be valid JSON in Vercel, including double quotes around keys!
             const firebaseConfigString = process.env.NEXT_PUBLIC_FIREBASE_CONFIG || '{}';
-            const firebaseConfig = JSON.parse(firebaseConfigString);
+            // FIX: Ensure quotes around object keys in the parsed string for Firebase to work.
+            const firebaseConfig = JSON.parse(firebaseConfigString.replace(/(\w+:)|(\w+ :)/g, (matched) => {
+                return '"' + matched.replace(/[:\s]/g, '') + '":';
+            }));
             
             if (firebaseConfig.apiKey) {
                 firebaseApp = firebase.initializeApp(firebaseConfig);
@@ -944,11 +947,6 @@
         const emailLoginBtn = document.getElementById('email-login-btn');
         const emailSignupBtn = document.getElementById('email-signup-btn');
         const authErrorMessage = document.getElementById('auth-error-message');
-        
-        // Pricing Buttons
-        const freePlanBtn = document.getElementById('free-plan-btn');
-        const proPlanBtn = document.getElementById('pro-plan-btn');
-
 
         // App State
         let selectedFile = null;
@@ -1408,654 +1406,10 @@
                             <ul class="space-y-2 text-gray-300 list-disc list-inside">
                                 ${response.keyPoints.map(point => `<li data-translate>${point}</li>`).join('')}
                             </ul>
-                            <h3 class...</h3>
-                    <h2 class="text-3xl md:text-5xl font-extrabold text-white">Get in Touch</h2>
-                    <p class="mt-5 text-lg text-gray-300">
-                        Have questions about our plans, features, or anything else? We'd love to hear from you.
-                    </p>
-                    
-                    <form id="contact-form" class="mt-12 max-w-xl mx-auto text-left">
-                        <div id="contact-form-content">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label for="contact-name" class="block text-sm font-medium text-gray-300 mb-2">Your Name</label>
-                                    <input type="text" id="contact-name" class="contact-input" placeholder="Aniket Sharma" required>
-                                </div>
-                                <div>
-                                    <label for="contact-email" class="block text-sm font-medium text-gray-300 mb-2">Your Email</label>
-                                    <input type="email" id="contact-email" class="contact-input" placeholder="aniket@example.com" required>
-                                </div>
-                            </div>
-                            <div class="mt-6">
-                                <label for="contact-message" class="block text-sm font-medium text-gray-300 mb-2">Message</label>
-                                <textarea id="contact-message" rows="5" class="contact-input" placeholder="Your message..." required></textarea>
-                            </div>
-                            <div class="mt-6">
-                                <button id="contact-submit-btn" type="submit" class="w-full px-8 py-3 rounded-lg font-semibold text-lg text-white gradient-bg hover:opacity-90 transition-opacity shadow-2xl shadow-purple-500/30">
-                                    Send Message
-                                </button>
-                                <p id="contact-error-message" class="text-red-400 text-center text-sm mt-3 h-4"></p>
-                            </div>
-                        </div>
-                        <!-- This will be shown on success -->
-                        <div id="contact-success-message" class="hidden text-center glass-card p-8 rounded-lg">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto text-green-400"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                            <h3 class="text-2xl font-bold text-white mt-4">Thank You!</h3>
-                            <p class="text-gray-300 mt-2">Your message has been sent. We'll get back to you soon.</p>
-                        </div>
-                    </form>
-                </div>
-            </section>
-
-        </main>
-
-        <!-- Footer -->
-        <footer class="py-16 bg-gray-900 border-t border-gray-800">
-            <div class="container mx-auto max-w-7xl px-6">
-                <div class="grid md:grid-cols-4 gap-8">
-                    <div>
-                        <a href="#" class="text-2xl font-bold text-white">
-                            Intelli<span class="gradient-text">Summary</span>
-                        </a>
-                        <p class="mt-2 text-sm text-gray-400">Turn documents into decisions.</p>
-                    </div>
-                    <div>
-                        <h4 class="font-semibold text-white uppercase tracking-wider">Product</h4>
-                        <ul class="mt-4 space-y-2">
-                            <li><a href="#features" class="text-gray-400 hover:text-white transition-colors">Features</a></li>
-                            <li><a href="#pricing" class="text-gray-400 hover:text-white transition-colors">Pricing</a></li>
-                            <li><a href="legal.html?page=terms" target="_blank" class="text-gray-400 hover:text-white transition-colors">Security</a></li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 class="font-semibold text-white uppercase tracking-wider">Company</h4>
-                        <ul class="mt-4 space-y-2">
-                            <li><a href="#" class="text-gray-400 hover:text-white transition-colors">About Us</a></li>
-                            <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Careers</a></li>
-                            <li><a href="#contact" class="text-gray-400 hover:text-white transition-colors">Contact</a></li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 class="font-semibold text-white uppercase tracking-wider">Legal</h4>
-                        <ul class="mt-4 space-y-2">
-                            <!-- UPDATED LINKS -->
-                            <li><a href="legal.html?page=privacy" target="_blank" class="text-gray-400 hover:text-white transition-colors">Privacy Policy</a></li>
-                            <li><a href="legal.html?page=terms" target="_blank" class="text-gray-400 hover:text-white transition-colors">Terms of Service</a></li>
-                            <li><a href="legal.html?page=refunds" target="_blank" class="text-gray-400 hover:text-white transition-colors">Refund Policy</a></li>
-                            <!-- NEW LINK -->
-                            <li><a href="legal.html?page=shipping" target="_blank" class="text-gray-400 hover:text-white transition-colors">Shipping Policy</a></li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="mt-12 pt-8 border-t border-gray-800 text-center text-sm text-gray-500">
-                    &copy; 2025 IntelliSummary. All rights reserved.
-                </div>
-            </div>
-        </footer>
-        
-        <!-- 
-        Main Application Script
-        This will run after the HTML is parsed.
-        -->
-        <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            
-            // --- Firebase Config ---
-            // We will initialize this as soon as the script runs
-            let firebaseApp;
-            let firebaseAuth;
-            let firestoreDB;
-            let authUser = null; // Holds the current logged-in user object
-            
-            try {
-                // This is replaced by Vercel with your Environment Variable
-                // Note: This must be valid JSON in Vercel, including double quotes around keys!
-                const firebaseConfigString = process.env.NEXT_PUBLIC_FIREBASE_CONFIG || '{}';
-                const firebaseConfig = JSON.parse(firebaseConfigString);
-                
-                if (firebaseConfig.apiKey) {
-                    firebaseApp = firebase.initializeApp(firebaseConfig);
-                    firebaseAuth = firebase.auth();
-                    firestoreDB = firebase.firestore();
-                    console.log("Firebase initialized successfully.");
-                    setupAuthListener(); // Start listening for login changes
-                } else {
-                    console.error("Firebase config is missing or invalid. Please check Vercel environment variables.");
-                }
-            } catch (e) {
-                console.error("Error parsing Firebase config:", e);
-            }
-
-            // --- Mobile Menu ---
-            const menuBtn = document.getElementById('mobile-menu-btn');
-            const mobileMenu = document.getElementById('mobile-menu');
-            menuBtn.addEventListener('click', () => {
-                mobileMenu.classList.toggle('hidden');
-            });
-
-            // --- App Elements ---
-            const appContainer = document.getElementById('app-container');
-            const inputState = document.getElementById('app-input-state');
-            const loadingState = document.getElementById('app-loading-state');
-            const loadingText = document.getElementById('loading-text');
-            const loadingSubtext = document.getElementById('loading-subtext');
-            const loaderContainer = document.getElementById('loader-container');
-            const outputState = document.getElementById('app-output-state');
-            
-            const dropzone = document.getElementById('file-dropzone');
-            const fileUpload = document.getElementById('file-upload');
-            const dropzoneText = document.getElementById('dropzone-text');
-            const textInput = document.getElementById('text-input');
-            const personaBtns = document.querySelectorAll('.persona-btn');
-            const analyzeBtn = document.getElementById('analyze-btn');
-            const errorMessage = document.getElementById('error-message');
-            
-            // Output state elements
-            const startOverBtn = document.getElementById('start-over-btn');
-            const outputFilename = document.getElementById('output-filename');
-            const outputTabs = document.getElementById('output-tabs');
-            const outputContent = document.getElementById('output-content');
-            const translateSelect = document.getElementById('translate-select');
-            const copyBtn = document.getElementById('copy-btn');
-            const copySuccess = document.getElementById('copy-success');
-
-            // Chat elements
-            const chatForm = document.getElementById('chat-form');
-            const chatInput = document.getElementById('chat-input');
-            const chatSubmitBtn = document.getElementById('chat-submit-btn');
-            const chatHistoryEl = document.getElementById('chat-history');
-            const chatErrorMessage = document.getElementById('chat-error-message');
-
-            // Speech Elements
-            const speechControls = document.getElementById('speech-controls');
-            const micBtn = document.getElementById('mic-btn');
-            const speechLangSelect = document.getElementById('speech-lang-select');
-            
-            // Contact Form Elements
-            const contactForm = document.getElementById('contact-form');
-            const contactFormContent = document.getElementById('contact-form-content');
-            const contactSuccessMessage = document.getElementById('contact-success-message');
-            const contactSubmitBtn = document.getElementById('contact-submit-btn');
-            const contactErrorMessage = document.getElementById('contact-error-message');
-
-            // Auth Elements
-            const authModal = document.getElementById('auth-modal');
-            const authCloseBtn = document.getElementById('auth-close-btn');
-            const signInBtnDesktop = document.getElementById('sign-in-btn-desktop');
-            const signInBtnMobile = document.getElementById('sign-in-btn-mobile');
-            const googleLoginBtn = document.getElementById('google-login-btn');
-            const emailAuthForm = document.getElementById('email-auth-form');
-            const emailLoginBtn = document.getElementById('email-login-btn');
-            const emailSignupBtn = document.getElementById('email-signup-btn');
-            const authErrorMessage = document.getElementById('auth-error-message');
-            
-            // Pricing Buttons
-            const freePlanBtn = document.getElementById('free-plan-btn');
-            const proPlanBtn = document.getElementById('pro-plan-btn');
-
-
-            // App State
-            let selectedFile = null;
-            let selectedPersona = null;
-            let fullDocumentText = null; 
-            let currentChatHistory = []; 
-            let currentChart = null; 
-            let originalTabHtml = {}; // Stores original HTML to reset translation
-            let originalResponseData = {}; // Stores original AI response for chart/quiz re-render
-            let currentActiveTabId = '';
-            let isTranslating = false;
-            let isPdfLibLoading = false; // Flag to prevent multiple loads
-            let recognition = null; // Speech recognition object
-            let isListening = false;
-            const chatInputPlaceholder = "Ask a follow-up question...";
-
-            // --- Loader/Progress HTML ---
-            const standardLoaderHTML = `<div class="loader"></div>`;
-            const progressRingHTML = `
-                <div class="progress-ring">
-                    <svg class="w-full h-full" viewBox="0 0 36 36">
-                        <path class="progress-ring__background"
-                            stroke-width="4"
-                            fill="none"
-                            d="M18 2.0845
-                            a 15.9155 15.9155 0 0 1 0 31.831
-                            a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                        <path class="progress-ring__circle"
-                            stroke-width="4"
-                            fill="none"
-                            stroke-dasharray="100, 100"
-                            stroke-dashoffset="100"
-                            d="M18 2.0845
-                            a 15.9155 15.9155 0 0 1 0 31.831
-                            a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                    </svg>
-                    <span id="progress-ring-text" class="progress-ring__text">0%</span>
-                </div>`;
-            
-            // --- State Validation ---
-            function validateState() {
-                // PAYWALL: Check if user is logged in
-                if (!authUser) {
-                    analyzeBtn.disabled = false; // Enable it
-                    analyzeBtn.textContent = 'Sign in to Analyze'; // Change text
-                    analyzeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                    return; // Stop here
-                } else {
-                    analyzeBtn.textContent = 'Analyze Document';
-                }
-
-                const hasFile = selectedFile !== null;
-                const hasText = textInput.value.trim().length > 0;
-                const hasInput = hasFile || hasText;
-                const hasPersona = selectedPersona !== null;
-
-                if (hasInput && hasPersona) {
-                    analyzeBtn.disabled = false;
-                    analyzeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                    errorMessage.textContent = '';
-                } else {
-                    analyzeBtn.disabled = true;
-                    analyzeBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                }
-            }
-    
-            // --- File Dropzone Logic ---
-            // Attach listeners directly
-            dropzone.addEventListener('click', () => fileUpload.click());
-            fileUpload.addEventListener('change', (e) => {
-                if (e.target.files.length > 0) handleFile(e.target.files[0]);
-            });
-            
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                dropzone.addEventListener(eventName, preventDefaults, false);
-            });
-            
-            ['dragenter', 'dragover'].forEach(eventName => {
-                dropzone.addEventListener(eventName, () => dropzone.classList.add('dragover'), false);
-            });
-            
-            ['dragleave', 'drop'].forEach(eventName => {
-                dropzone.addEventListener(eventName, () => dropzone.classList.remove('dragover'), false);
-            });
-            
-            dropzone.addEventListener('drop', (e) => {
-                if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
-            }, false);
-
-            function preventDefaults(e) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-
-            // --- NEW "On-Demand" PDF Library Loader ---
-            function loadPdfLibraryAndProcess(file) {
-                // Check if we are already loading it
-                if (isPdfLibLoading) {
-                    console.log('Already attempting to load pdf.js...');
-                    return;
-                }
-                isPdfLibLoading = true;
-
-                console.log('Loading pdf.js library...');
-                loadingText.textContent = 'Loading PDF Reader...'; // Show user
-                loadingSubtext.textContent = 'This happens once on your first PDF.';
-                loaderContainer.innerHTML = standardLoaderHTML;
-                loadingState.classList.remove('hidden');
-                inputState.classList.add('hidden');
-
-                const script = document.createElement('script');
-                // *** NEW FIX: Using a more recent and stable CDN link ***
-                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-                
-                script.onload = () => {
-                    console.log('pdf.js library loaded successfully.');
-                    // NOW it's safe to set the worker
-                    // *** NEW FIX: Matching worker URL to the library version ***
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-                    isPdfLibLoading = false;
-                    // Now, process the file
-                    processPdf(file);
-                };
-                
-                script.onerror = () => {
-                    console.error('FATAL: Failed to load pdf.js library from CDN.');
-                    errorMessage.textContent = 'Failed to load PDF library. Please refresh and try again.';
-                    loadingState.classList.add('hidden');
-                    inputState.classList.remove('hidden');
-                    resetFileInput();
-                    isPdfLibLoading = false;
-                };
-                document.body.appendChild(script);
-            }
-
-            // --- NEW: Extracted PDF Processing Logic ---
-            async function processPdf(file) {
-                console.log('Processing PDF...');
-                
-                // Set UI for processing
-                loadingState.classList.remove('hidden');
-                inputState.classList.add('hidden');
-                loaderContainer.innerHTML = progressRingHTML; // Add progress ring
-                loadingText.textContent = 'Reading file (0%)...';
-                loadingSubtext.textContent = 'Please wait...';
-
-                const progressCircle = document.querySelector('.progress-ring__circle');
-                const progressText = document.getElementById('progress-ring-text');
-                const radius = 15.9155; // Must match the SVG path
-                const circumference = 2 * Math.PI * radius;
-                
-                // Ensure elements exist before styling
-                if(progressCircle) {
-                    progressCircle.style.strokeDasharray = `${circumference} ${circumference}`;
-                } else {
-                    console.error("Could not find progress circle element!");
-                }
-
-                const reader = new FileReader();
-
-                // Progress Event Handler
-                reader.onprogress = (event) => {
-                    if (event.lengthComputable) {
-                        const percent = Math.round((event.loaded / event.total) * 100);
-                        loadingText.textContent = `Reading file (${percent}%)...`;
-                        if(progressCircle && progressText) {
-                            const offset = circumference - (percent / 100) * circumference;
-                            progressCircle.style.strokeDashoffset = offset;
-                            progressText.textContent = `${percent}%`;
-                        }
-                    }
-                };
-
-                reader.onload = async (e) => {
-                    loadingText.textContent = 'Parsing PDF...'; // Update text
-                    loadingSubtext.textContent = 'This may take a moment for large files.';
-                    
-                    try {
-                        const pdfData = new Uint8Array(e.target.result);
-                        const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
-                        let textContent = '';
-                        for (let i = 1; i <= pdf.numPages; i++) {
-                            const page = await pdf.getPage(i);
-                            const text = await page.getTextContent();
-                            textContent += text.items.map(s => s.str).join(' ') + '\n';
-                        }
-                        fullDocumentText = textContent;
-                        validateState();
-                    } catch (pdfError) {
-                        console.error('PDF parsing error:', pdfError);
-                        errorMessage.textContent = 'Error parsing PDF file. It may be corrupt or encrypted.';
-                        resetFileInput();
-                    } finally {
-                        loadingState.classList.add('hidden');
-                        inputState.classList.remove('hidden');
-                    }
-                };
-                reader.onerror = () => {
-                    errorMessage.textContent = 'Error reading file.';
-                    resetFileInput();
-                };
-                reader.readAsArrayBuffer(file);
-            }
-
-            // --- MODIFIED: handleFile Function ---
-            function handleFile(file) {
-                if (file.type !== 'text/plain' && file.type !== 'application/pdf') {
-                    errorMessage.textContent = 'Only .PDF and .TXT files are supported.';
-                    resetFileInput();
-                    return;
-                }
-
-                // Set file info for both types
-                selectedFile = file;
-                dropzoneText.textContent = file.name;
-                dropzoneText.classList.add('gradient-text', 'font-bold');
-                textInput.value = ''; 
-                textInput.disabled = true;
-                errorMessage.textContent = '';
-                
-                if (file.type === 'application/pdf') {
-                    if (typeof pdfjsLib === 'undefined') {
-                        // It's not loaded. Go fetch it.
-                        loadPdfLibraryAndProcess(file);
-                    } else {
-                        // It's already loaded, just process
-                        processPdf(file);
-                    }
-                    return; // Stop here, PDF logic will handle the rest
-                } 
-                
-                // --- This part is for .TXT files only ---
-                loadingState.classList.remove('hidden');
-                inputState.classList.add('hidden');
-                loadingSubtext.textContent = 'Please wait...';
-                loaderContainer.innerHTML = standardLoaderHTML;
-                loadingText.textContent = 'Reading file...';
-
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    fullDocumentText = e.target.result;
-                    validateState();
-                    loadingState.classList.add('hidden');
-                    inputState.classList.remove('hidden');
-                };
-                reader.onerror = () => {
-                    errorMessage.textContent = 'Error reading file.';
-                    resetFileInput();
-                };
-                reader.readAsText(file);
-            }
-
-            function resetFileInput() {
-                selectedFile = null;
-                fullDocumentText = null;
-                fileUpload.value = null; 
-                textInput.value = '';
-                textInput.disabled = false;
-                dropzoneText.textContent = 'Drag & Drop your .PDF or .TXT file';
-                dropzoneText.classList.remove('gradient-text', 'font-bold');
-                loadingState.classList.add('hidden');
-                inputState.classList.remove('hidden');
-                validateState();
-            }
-
-            // --- Text Input Logic ---
-            textInput.addEventListener('input', () => {
-                if (textInput.value.trim().length > 0) {
-                    if (selectedFile) resetFileInput(); 
-                    fullDocumentText = textInput.value.trim();
-                } else {
-                    fullDocumentText = null;
-                }
-                validateState();
-            });
-
-            // --- Persona Selection ---
-            personaBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    personaBtns.forEach(b => b.classList.remove('selected'));
-                    btn.classList.add('selected');
-                    selectedPersona = btn.dataset.persona;
-                    validateState();
-                });
-            });
-
-            // --- Analyze Button Click ---
-            analyzeBtn.addEventListener('click', async () => {
-                // PAYWALL: Check for login
-                if (!authUser) {
-                    openAuthModal();
-                    return;
-                }
-                
-                if (analyzeBtn.disabled) {
-                    errorMessage.textContent = 'Please add a file (or paste text) and select a mode.';
-                    return;
-                }
-                
-                inputState.classList.add('hidden');
-                outputState.classList.add('hidden');
-                loaderContainer.innerHTML = standardLoaderHTML; // Use standard spinner for AI
-                loadingText.textContent = 'Analyzing your document...';
-                loadingSubtext.textContent = 'Making sense of the data and generating insights.';
-                loadingState.classList.remove('hidden');
-                errorMessage.textContent = '';
-                
-                outputFilename.textContent = selectedFile ? selectedFile.name : 'Pasted Text';
-
-                if (!fullDocumentText) {
-                    errorMessage.textContent = 'Could not read input text.';
-                    loadingState.classList.add('hidden');
-                    inputState.classList.remove('hidden');
-                    return;
-                }
-
-                currentChatHistory = [];
-                chatHistoryEl.innerHTML = '<div class="chat-bubble chat-bubble-ai">Ask me a follow-up question about your document!</div>';
-
-                try {
-                    const aiResponse = await callApi('/api/generate', {
-                        text: fullDocumentText,
-                        persona: selectedPersona
-                    });
-                    
-                    originalResponseData[selectedPersona] = aiResponse; // Store full response
-
-                    loadingState.classList.add('hidden');
-                    outputState.classList.remove('hidden');
-                    displayRealOutput(aiResponse, selectedPersona);
-
-                } catch (error) {
-                    console.error('Error calling Gemini API:', error);
-                    
-                    if (error.message.includes('402')) {
-                        errorMessage.textContent = `UPGRADE REQUIRED: ${error.message.split(': ')[1]}`;
-                    } else if (error.message.includes('401')) {
-                        errorMessage.textContent = `Authentication Error. Please sign out and log back in.`;
-                    } else {
-                        errorMessage.textContent = `AI Error: ${error.message}. Please try again.`;
-                    }
-                    
-                    loadingState.classList.add('hidden');
-                    inputState.classList.remove('hidden');
-                }
-            });
-
-            // --- Start Over Button ---
-            startOverBtn.addEventListener('click', () => {
-                outputState.classList.add('hidden');
-                loadingState.classList.add('hidden');
-                inputState.classList.remove('hidden');
-                
-                selectedFile = null;
-                selectedPersona = null;
-                fullDocumentText = null;
-                fileUpload.value = null;
-                textInput.value = '';
-                textInput.disabled = false;
-                dropzoneText.textContent = 'Drag & Drop your .PDF or .TXT file';
-                dropzoneText.classList.remove('gradient-text', 'font-bold');
-                personaBtns.forEach(b => b.classList.remove('selected'));
-                if (currentChart) {
-                    currentChart.destroy();
-                    currentChart = null;
-                }
-                originalTabHtml = {};
-                originalResponseData = {};
-                translateSelect.value = '';
-                validateState();
-            });
-            
-            // --- Display REAL Output ---
-            function displayRealOutput(response, persona) {
-                outputTabs.innerHTML = '';
-                outputContent.innerHTML = '';
-                if (!originalTabHtml[persona]) { // Only clear cache if it's a new generation
-                    originalTabHtml = {};
-                }
-                translateSelect.value = ''; 
-
-                const allTabs = [
-                    { id: 'summary', name: 'Quick Summary' },
-                    { id: 'student', name: 'Study Buddy' },
-                    { id: 'business', name: 'Business Analyst' }
-                ];
-                
-                let contentHtml = '';
-
-                try {
-                    switch (persona) {
-                        case 'business':
-                            contentHtml = `
-                                <h3 class="text-lg font-semibold text-white mb-3" data-translate>Key Data Insights</h3>
-                                <p class="text-gray-300 mb-4" data-translate>${response.keyInsights}</p>
-                                
-                                <h3 class="text-lg font-semibold text-white mb-3" data-translate>Data Visualization</h3>
-                                <div class="chart-container bg-gray-800 p-4 rounded-lg">
-                                    <canvas id="outputChart"></canvas>
-                                </div>
-                                
-                                <h3 class="text-lg font-semibold text-white mt-6 mb-3" data-translate>Extracted Data Table</h3>
-                                <div class="overflow-x-auto">
-                                <table class="w-full min-w-max text-left text-sm text-gray-300">
-                                    <thead class="bg-gray-800 text-xs text-gray-400 uppercase">
-                                        <tr>
-                                            <th scope="col" class="py-3 px-4 rounded-l-lg" data-translate>Metric</th>
-                                            <th scope="col" class="py-3 px-4" data-translate>Value</th>
-                                            <th scope="col" class="py-3 px-4 rounded-r-lg" data-translate>Change</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-gray-700">
-                                        ${response.tableData.map(row => `
-                                            <tr class="bg-gray-900">
-                                                <td class="py-3 px-4 font-medium" data-translate>${row.metric}</td>
-                                                <td class="py-3 px-4" data-translate>${row.value}</td>
-                                                <td class="py-3 px-4 ${String(row.change).startsWith('+') ? 'text-green-400' : String(row.change).startsWith('-') ? 'text-red-400' : ''}" data-translate>${row.change}</td>
-                                            </tr>
-                                        `).join('')}
-                                    </tbody>
-                                </table>
-                                </div>
-                            `;
-                            break;
-                        case 'student':
-                            contentHtml = `
-                                <h3 class="text-lg font-semibold text-white mb-3" data-translate>Simplified Concepts 🧠</h3>
-                                <div class="space-y-4 text-gray-300">
-                                    ${response.simplifiedConcepts.map(item => `
-                                        <div class="bg-gray-800 p-4 rounded-lg">
-                                            <strong class="text-purple-300" data-translate>${item.concept}:</strong>
-                                            <p data-translate>${item.explanation}</p>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                                
-                                <h3 class="text-lg font-semibold text-white mt-6 mb-3" data-translate>Check Your Knowledge! 🎓</h3>
-                                <div id="quiz-container" class="bg-gray-800 p-4 rounded-lg text-gray-300">
-                                    <p class="font-semibold mb-3" data-translate>${response.quiz.question}</p>
-                                    <div class="space-y-2">
-                                        ${response.quiz.options.map((option, index) => `
-                                            <button class="quiz-option block w-full text-left p-3 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors" data-index="${index}" data-translate>
-                                                ${option}
-                                            </button>
-                                        `).join('')}
-                                    </div>
-                                    <p id="quiz-feedback" class="mt-3 text-sm h-4"></p>
-                                </div>
-                            `;
-                            break;
-                        case 'summary':
-                        default:
-                            contentHtml = `
-                                <h3 class="text-lg font-semibold text-white mb-3" data-translate>Key Points</h3>
-                                <ul class="space-y-2 text-gray-300 list-disc list-inside">
-                                    ${response.keyPoints.map(point => `<li data-translate>${point}</li>`).join('')}
-                                </ul>
-                                <h3 class="text-lg font-semibold text-white mt-6 mb-3" data-translate>Full Summary</h3>
-                                <p class="text-gray-300 whitespace-pre-wrap" data-translate>${response.fullSummary}</p>
-                            `;
-                            break;
+                            <h3 class="text-lg font-semibold text-white mt-6 mb-3" data-translate>Full Summary</h3>
+                            <p class="text-gray-300 whitespace-pre-wrap" data-translate>${response.fullSummary}</p>
+                        `;
+                        break;
                 }
             } catch (e) {
                 console.error("Error displaying output:", e, "Response:", response);
@@ -2503,18 +1857,8 @@
             contactErrorMessage.textContent = '';
 
             try {
-                // No auth token is needed for the contact form
-                const response = await fetch('/api/contact', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, email, message })
-                });
+                const response = await callApi('/api/contact', { name, email, message });
                 
-                if (!response.ok) {
-                    const err = await response.json();
-                    throw new Error(err.error || 'Failed to send message.');
-                }
-
                 // Show success message
                 contactFormContent.classList.add('hidden');
                 contactSuccessMessage.classList.remove('hidden');
@@ -2554,15 +1898,11 @@
         authModal.addEventListener('click', (e) => {
             if (e.target === authModal) closeAuthModal();
         });
-        
-        // Pricing Button Listeners
-        freePlanBtn.addEventListener('click', (e) => { e.preventDefault(); openAuthModal(); });
-        proPlanBtn.addEventListener('click', (e) => { e.preventDefault(); handleUpgradeClick(); });
-
 
         // --- Main Auth State Listener ---
         function setupAuthListener() {
-            if (!firebaseAuth) return;
+            if (!firebaseAuth) return; // Prevent errors if Firebase failed to initialize
+            
             firebaseAuth.onAuthStateChanged(async (user) => {
                 if (user) {
                     // User is signed in
@@ -2573,7 +1913,13 @@
                     // Critical: Ensure the user exists in Firestore on EVERY login
                     // This handles new Google users and existing users who just logged in.
                     const token = await user.getIdToken();
-                    await callApi('/api/create-user', { token }, false); // Don't check auth for create-user
+                    try {
+                        await callApi('/api/create-user', { token });
+                    } catch (e) {
+                         console.error("Failed to create/check user in Firestore:", e);
+                         // If we fail here, we should probably sign them out
+                         firebaseAuth.signOut();
+                    }
                     
                     closeAuthModal();
                 } else {
@@ -2618,10 +1964,9 @@
             document.getElementById('sign-out-btn-desktop').addEventListener('click', handleSignOut);
             document.getElementById('sign-out-btn-mobile').addEventListener('click', handleSignOut);
             
-            // Add event listeners for upgrade buttons
-            document.getElementById('upgrade-btn-desktop').addEventListener('click', handleUpgradeClick);
-            document.getElementById('upgrade-btn-mobile').addEventListener('click', handleUpgradeClick);
-            proPlanBtn.addEventListener('click', handleUpgradeClick); // Also update pricing table btn
+            // TODO: Add event listeners for upgrade buttons
+            // document.getElementById('upgrade-btn-desktop').addEventListener('click', handleUpgradeClick);
+            // document.getElementById('upgrade-btn-mobile').addEventListener('click', handleUpgradeClick);
         }
 
         function updateUIForLoggedOutUser() {
@@ -2643,7 +1988,6 @@
             // Re-add sign in listeners
             document.getElementById('sign-in-btn-desktop').addEventListener('click', (e) => { e.preventDefault(); openAuthModal(); });
             document.getElementById('sign-in-btn-mobile').addEventListener('click', (e) => { e.preventDefault(); openAuthModal(); mobileMenu.classList.add('hidden'); });
-            proPlanBtn.addEventListener('click', (e) => { e.preventDefault(); openAuthModal(); }); // Make pro plan btn open login
         }
 
         // --- Auth Action Handlers ---
@@ -2656,10 +2000,12 @@
             try {
                 const result = await firebaseAuth.signInWithPopup(provider);
                 const user = result.user;
+                // isNewUser property is unreliable in compat SDK, rely on callApi
+                
                 // Get the fresh token
                 const token = await user.getIdToken();
                 // Call our backend to create the user in Firestore (it handles existing user check)
-                await callApi('/api/create-user', { token }, false);
+                await callApi('/api/create-user', { token });
                 
                 closeAuthModal();
             } catch (error) {
@@ -2682,7 +2028,7 @@
 
                 // User is created, now create database entry
                 const token = await user.getIdToken();
-                await callApi('/api/create-user', { token }, false);
+                await callApi('/api/create-user', { token });
                 
                 closeAuthModal();
             } catch (error) {
@@ -2714,82 +2060,19 @@
                 firebaseAuth.signOut();
             }
         }
-        
-        // --- NEW: RAZORPAY PAYMENT HANDLER ---
-        async function handleUpgradeClick(e) {
-            e.preventDefault();
-            if (!authUser) {
-                openAuthModal();
-                return;
-            }
-
-            console.log('Creating subscription...');
-            // You can add a loading spinner to the button here
-            
-            try {
-                // Call our backend to create a subscription
-                const response = await callApi('/api/create-subscription', {});
-                
-                const { subscriptionId, key_id } = response;
-                
-                const options = {
-                    key: key_id,
-                    subscription_id: subscriptionId,
-                    name: "IntelliSummary Pro",
-                    description: "Monthly Pro Subscription",
-                    "handler": function (response) {
-                        // This function is called on a successful payment
-                        alert("Payment successful! Your account is now Pro.");
-                        // The webhook (api/razorpay-webhook.js) will handle updating the database.
-                        // We can also optimistically update the UI here.
-                        window.location.reload(); // Simple refresh to show new status
-                    },
-                    "prefill": {
-                        "name": authUser.displayName || "",
-                        "email": authUser.email || "",
-                    },
-                    "theme": {
-                        "color": "#a855f7"
-                    }
-                };
-                
-                const rzp1 = new Razorpay(options);
-                rzp1.on('payment.failed', function (response){
-                    alert("Payment failed: " + response.error.description);
-                    // Re-enable upgrade buttons
-                });
-                
-                rzp1.open(); // Open the Razorpay payment modal
-
-            } catch (error) {
-                console.error('Error starting subscription:', error);
-                alert(`Error: ${error.message}`);
-                // Re-enable upgrade buttons
-            }
-        }
-        
-        // Add listeners for free plan button (just opens modal)
-        freePlanBtn.addEventListener('click', (e) => { e.preventDefault(); openAuthModal(); });
-
 
         // --- Universal API Call Function ---
-        async function callApi(endpoint, body, sendAuth = true) {
+        async function callApi(endpoint, body) {
             let authToken = null;
-            
-            // Only send auth token if user is logged in AND sendAuth is true
-            if (authUser && sendAuth) {
+            if (authUser) {
                 try {
+                    // Get the latest token to ensure it hasn't expired
                     authToken = await authUser.getIdToken(true); 
                 } catch (e) {
                     console.error('Could not get auth token, signing out:', e);
                     firebaseAuth.signOut(); 
                     throw new Error("401: Session expired. Please sign in again.");
                 }
-            }
-            
-            // This logic is for the create-user call, which needs the token in the body
-            if (endpoint === '/api/create-user') {
-                authToken = body.token;
             }
 
             let response;
@@ -2800,8 +2083,7 @@
                     headers: { 
                         'Content-Type': 'application/json',
                         // Send the token in the header for backend verification
-                        // But not for create-user (it's in the body) or contact
-                        'Authorization': (sendAuth && authUser) ? `Bearer ${authToken}` : ''
+                        'Authorization': `Bearer ${authToken}`
                     },
                     body: JSON.stringify(body)
                 });
