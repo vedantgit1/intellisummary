@@ -16,14 +16,24 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-    <!-- 
-      NEW: Only load Chart.js. 
-      pdf.js will be loaded on-demand when a PDF is uploaded.
-    -->
+    <!-- Chart.js (Loaded deferred) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    
+    <!-- NEW: Razorpay Checkout Script (for payments later) -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    
+    <!-- NEW: Firebase SDKs -->
+    <!-- We will initialize Firebase in the main script at the bottom -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
 
     <style>
         /* Custom styles for the "mind-blowing" look */
+        html {
+            scroll-behavior: smooth;
+        }
         body {
             font-family: 'Inter', sans-serif;
             background-color: #030712; /* Tailwind gray-950 */
@@ -93,24 +103,21 @@
             box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
         }
         
-        /* --- NEW: Circular Progress Bar --- */
+        /* Circular Progress Bar */
         .progress-ring {
             width: 60px;
             height: 60px;
             position: relative;
         }
-
         .progress-ring__circle {
             transition: 0.35s stroke-dashoffset;
             transform: rotate(-90deg);
             transform-origin: 50% 50%;
             stroke: #a855f7; /* purple-500 */
         }
-
         .progress-ring__background {
             stroke: #374151; /* gray-700 */
         }
-        
         .progress-ring__text {
             position: absolute;
             top: 50%;
@@ -144,17 +151,12 @@
             border: 4px solid;
             border-color: #a855f7 transparent; /* purple-500 */
         }
-
         @keyframes rotation {
-            0% {
-                transform: rotate(0deg);
-            }
-            100% {
-                transform: rotate(360deg);
-            }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
         
-        /* NEW: Chat / Translate Styles */
+        /* Chat / Translate Styles */
         .chat-bubble {
             max-width: 80%;
             padding: 0.75rem 1rem;
@@ -172,28 +174,10 @@
             border-bottom-left-radius: 0.25rem;
             align-self: flex-start;
         }
-        .chat-message-text p {
-            margin-bottom: 0.5rem;
-        }
-        .chat-message-text ul {
-            list-style-type: disc;
-            margin-left: 1.25rem;
-            margin-bottom: 0.5rem;
-        }
-        .chat-message-text ol {
-            list-style-type: decimal;
-            margin-left: 1.25rem;
-            margin-bottom: 0.5rem;
-        }
-
-        /* Prevent Chart.js from resizing infinitely in flexbox */
-        .chart-container {
-            position: relative;
-            height: 300px;
-            width: 100%;
-        }
-
-        /* NEW: Mic Button Listening Style */
+        .chat-message-text p { margin-bottom: 0.5rem; }
+        .chat-message-text ul { list-style-type: disc; margin-left: 1.25rem; margin-bottom: 0.5rem; }
+        .chat-message-text ol { list-style-type: decimal; margin-left: 1.25rem; margin-bottom: 0.5rem; }
+        .chart-container { position: relative; height: 300px; width: 100%; }
         .mic-listening svg {
             color: #ef4444; /* red-500 */
             animation: pulse 1.5s infinite;
@@ -203,8 +187,6 @@
             50% { transform: scale(1.1); }
             100% { transform: scale(1); }
         }
-
-        /* NEW: Custom select for speech */
         .speech-select {
             background-color: #4B5563; /* gray-600 */
             border: 1px solid #6B7280; /* gray-500 */
@@ -222,6 +204,101 @@
             background-size: 1.25em 1.25em;
             padding-right: 2.5rem;
         }
+
+        /* Contact Form Input */
+        .contact-input, .auth-input {
+            background-color: #1f2937; /* gray-800 */
+            border: 1px solid #4b5563; /* gray-600 */
+            color: white;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            width: 100%;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .contact-input:focus, .auth-input:focus {
+            outline: none;
+            border-color: #a855f7; /* purple-500 */
+            box-shadow: 0 0 0 2px #a855f733;
+        }
+
+        /* Login Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: #111827; /* gray-900 */
+            border-radius: 1rem;
+            padding: 2rem;
+            width: 90%;
+            max-width: 450px;
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+            position: relative;
+        }
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+        .google-btn {
+            background-color: #fff;
+            color: #374151; /* gray-700 */
+            border: 1px solid #d1d5db; /* gray-300 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+        }
+        .google-btn:hover {
+            background-color: #f3f4f6; /* gray-100 */
+        }
+        .google-btn svg {
+            width: 20px;
+            height: 20px;
+            margin-right: 0.75rem;
+        }
+        .auth-divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: #6b7280; /* gray-500 */
+            font-size: 0.875rem;
+            margin-top: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .auth-divider::before, .auth-divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #4b5563; /* gray-600 */
+        }
+        .auth-divider:not(:empty)::before {
+            margin-right: 1rem;
+        }
+        .auth-divider:not(:empty)::after {
+            margin-left: 1rem;
+        }
+
     </style>
 </head>
 <body class="text-gray-200 antialiased">
@@ -234,33 +311,101 @@
                     Intelli<span class="gradient-text">Summary</span>
                 </a>
             </div>
-            <div class="hidden md:flex items-center space-x-6">
+            
+            <!-- NEW: Header Links Container -->
+            <div id="header-links" class="hidden md:flex items-center space-x-6">
                 <a href="#features" class="text-gray-300 hover:text-white transition-colors">Features</a>
                 <a href="#use-cases" class="text-gray-300 hover:text-white transition-colors">Use Cases</a>
                 <a href="#pricing" class="text-gray-300 hover:text-white transition-colors">Pricing</a>
-                <a href="#" class="text-gray-300 hover:text-white transition-colors">Sign In</a>
+                <a href="#contact" class="text-gray-300 hover:text-white transition-colors">Contact</a>
+                
+                <!-- This part will be dynamic -->
+                <div id="auth-links-desktop">
+                    <a href="#" id="sign-in-btn-desktop" class="text-gray-300 hover:text-white transition-colors">Sign In</a>
+                </div>
             </div>
-            <a href="#pricing" class="hidden md:block px-5 py-2.5 rounded-lg font-semibold text-white gradient-bg hover:opacity-90 transition-opacity shadow-lg shadow-purple-500/20">
-                Get Started Free
-            </a>
+
+            <!-- This part will be dynamic -->
+            <div id="auth-action-btn-desktop">
+                <a href="#pricing" class="hidden md:block px-5 py-2.5 rounded-lg font-semibold text-white gradient-bg hover:opacity-90 transition-opacity shadow-lg shadow-purple-500/20">
+                    Get Started Free
+                </a>
+            </div>
+            
             <!-- Mobile Menu Button -->
             <button id="mobile-menu-btn" class="md:hidden text-white">
                 <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
             </button>
         </nav>
+        
         <!-- Mobile Menu -->
         <div id="mobile-menu" class="hidden md:hidden bg-gray-900 absolute top-20 left-0 right-0 py-4">
             <div class="container mx-auto px-6 flex flex-col space-y-4">
                 <a href="#features" class="text-gray-300 hover:text-white transition-colors">Features</a>
                 <a href="#use-cases" class="text-gray-300 hover:text-white transition-colors">Use Cases</a>
                 <a href="#pricing" class="text-gray-300 hover:text-white transition-colors">Pricing</a>
-                <a href="#" class="text-gray-300 hover:text-white transition-colors">Sign In</a>
-                <a href="#pricing" class="px-5 py-2.5 rounded-lg font-semibold text-white text-center gradient-bg hover:opacity-90 transition-opacity shadow-lg shadow-purple-500/20">
-                    Get Started Free
-                </a>
+                <a href="#contact" class="text-gray-300 hover:text-white transition-colors">Contact</a>
+                
+                <!-- This part will be dynamic -->
+                <div id="auth-links-mobile">
+                    <a href="#" id="sign-in-btn-mobile" class="text-gray-300 hover:text-white transition-colors">Sign In</a>
+                </div>
+                
+                <div id="auth-action-btn-mobile">
+                    <a href="#pricing" class="px-5 py-2.5 rounded-lg font-semibold text-white text-center gradient-bg hover:opacity-90 transition-opacity shadow-lg shadow-purple-500/20">
+                        Get Started Free
+                    </a>
+                </div>
             </div>
         </div>
     </header>
+
+    <!-- 
+      *************************************************
+      * NEW: LOGIN/SIGNUP MODAL
+      *************************************************
+    -->
+    <div id="auth-modal" class="modal-overlay">
+        <div class="modal-content">
+            <!-- Close Button -->
+            <button id="auth-close-btn" class="absolute top-4 right-5 text-gray-500 hover:text-gray-300 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+
+            <h2 class="text-2xl font-bold text-white text-center mb-6">Welcome to IntelliSummary</h2>
+            
+            <button id="google-login-btn" class="google-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="100" height="100" viewBox="0 0 48 48">
+                    <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.119-11.382-7.662l-6.571,4.819C9.656,39.663,16.318,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C39.901,36.639,44,30.701,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path>
+                </svg>
+                Continue with Google
+            </button>
+            
+            <div class="auth-divider">or</div>
+
+            <form id="email-auth-form">
+                <div class="space-y-4">
+                    <div>
+                        <label for="auth-email" class="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                        <input type="email" id="auth-email" class="auth-input" placeholder="you@example.com" required>
+                    </div>
+                    <div>
+                        <label for="auth-password" class="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                        <input type="password" id="auth-password" class="auth-input" placeholder="••••••••" required>
+                    </div>
+                </div>
+                <p id="auth-error-message" class="text-red-400 text-center text-sm mt-4 h-4"></p>
+                <div class="mt-6 flex flex-col sm:flex-row gap-3">
+                    <button type="button" id="email-login-btn" class="flex-1 w-full py-3 px-5 rounded-lg font-semibold text-white bg-gray-700 hover:bg-gray-600 transition-colors">
+                        Login
+                    </button>
+                    <button type="button" id="email-signup-btn" class="flex-1 w-full py-3 px-5 rounded-lg font-semibold text-white gradient-bg hover:opacity-90 transition-opacity">
+                        Sign Up
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Hero Section -->
     <main class="overflow-hidden">
@@ -369,7 +514,7 @@
                                     </div>
                                     <!-- Tools: Translate & Copy -->
                                     <div class="flex items-center space-x-2 mt-3 sm:mt-0">
-                                        <!-- NEW: Language list updated -->
+                                        <!-- UPDATED: More languages -->
                                         <select id="translate-select" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block p-2">
                                             <option value="">Translate...</option>
                                             <option value="Arabic">Arabic</option>
@@ -404,7 +549,7 @@
                                 </div>
                             </div>
 
-                            <!-- NEW: Chat with your Document -->
+                            <!-- Chat with your Document -->
                             <div class="p-4 md:p-6 border-t border-gray-700">
                                 <h3 class="text-lg font-semibold text-white mb-3">Chat with your Document</h3>
                                 <!-- Chat History -->
@@ -416,7 +561,7 @@
                                 </div>
                                 
                                 <!-- Chat Input -->
-                                <!-- NEW: Chat form with Mic Button and Language Select -->
+                                <!-- UPDATED: Chat form with Mic Button and Language Select -->
                                 <form id="chat-form" class="flex items-center space-x-2">
                                     <input type="text" id="chat-input" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg p-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Ask a follow-up question...">
                                     
@@ -617,16 +762,44 @@
             </div>
         </section>
 
-        <!-- Final CTA -->
-        <section class="py-20 md:py-32">
+        <!-- NEW: Contact Us Section -->
+        <section id="contact" class="py-20 md:py-32">
             <div class="container mx-auto max-w-3xl px-6 text-center">
-                <h2 class="text-3xl md:text-5xl font-extrabold text-white">Transform Your Documents Today</h2>
+                <h2 class="text-3xl md:text-5xl font-extrabold text-white">Get in Touch</h2>
                 <p class="mt-5 text-lg text-gray-300">
-                    Stop drowning in documents. Start discovering insights. Get started for free, no credit card required.
+                    Have questions about our plans, features, or anything else? We'd love to hear from you.
                 </p>
-                <a href="#pricing" class="mt-10 inline-block px-8 py-4 rounded-lg font-semibold text-lg text-white gradient-bg hover:opacity-90 transition-opacity shadow-2xl shadow-purple-500/30">
-                    Get Started for Free
-                </a>
+                
+                <form id="contact-form" class="mt-12 max-w-xl mx-auto text-left">
+                    <div id="contact-form-content">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="contact-name" class="block text-sm font-medium text-gray-300 mb-2">Your Name</label>
+                                <input type="text" id="contact-name" class="contact-input" placeholder="Aniket Sharma" required>
+                            </div>
+                            <div>
+                                <label for="contact-email" class="block text-sm font-medium text-gray-300 mb-2">Your Email</label>
+                                <input type="email" id="contact-email" class="contact-input" placeholder="aniket@example.com" required>
+                            </div>
+                        </div>
+                        <div class="mt-6">
+                            <label for="contact-message" class="block text-sm font-medium text-gray-300 mb-2">Message</label>
+                            <textarea id="contact-message" rows="5" class="contact-input" placeholder="Your message..." required></textarea>
+                        </div>
+                        <div class="mt-6">
+                            <button id="contact-submit-btn" type="submit" class="w-full px-8 py-3 rounded-lg font-semibold text-lg text-white gradient-bg hover:opacity-90 transition-opacity shadow-2xl shadow-purple-500/30">
+                                Send Message
+                            </button>
+                            <p id="contact-error-message" class="text-red-400 text-center text-sm mt-3 h-4"></p>
+                        </div>
+                    </div>
+                    <!-- This will be shown on success -->
+                    <div id="contact-success-message" class="hidden text-center glass-card p-8 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto text-green-400"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        <h3 class="text-2xl font-bold text-white mt-4">Thank You!</h3>
+                        <p class="text-gray-300 mt-2">Your message has been sent. We'll get back to you soon.</p>
+                    </div>
+                </form>
             </div>
         </section>
 
@@ -655,14 +828,18 @@
                     <ul class="mt-4 space-y-2">
                         <li><a href="#" class="text-gray-400 hover:text-white transition-colors">About Us</a></li>
                         <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Careers</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Contact</a></li>
+                        <li><a href="#contact" class="text-gray-400 hover:text-white transition-colors">Contact</a></li>
                     </ul>
                 </div>
                 <div>
                     <h4 class="font-semibold text-white uppercase tracking-wider">Legal</h4>
                     <ul class="mt-4 space-y-2">
-                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Privacy Policy</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Terms of Service</a></li>
+                        <!-- UPDATED LINKS -->
+                        <li><a href="legal.html?page=privacy" target="_blank" class="text-gray-400 hover:text-white transition-colors">Privacy Policy</a></li>
+                        <li><a href="legal.html?page=terms" target="_blank" class="text-gray-400 hover:text-white transition-colors">Terms of Service</a></li>
+                        <li><a href="legal.html?page=refunds" target="_blank" class="text-gray-400 hover:text-white transition-colors">Refund Policy</a></li>
+                        <!-- NEW LINK -->
+                        <li><a href="legal.html?page=shipping" target="_blank" class="text-gray-400 hover:text-white transition-colors">Shipping Policy</a></li>
                     </ul>
                 </div>
             </div>
@@ -679,6 +856,32 @@
     <script>
     document.addEventListener('DOMContentLoaded', () => {
         
+        // --- Firebase Config ---
+        // We will initialize this as soon as the script runs
+        let firebaseApp;
+        let firebaseAuth;
+        let firestoreDB;
+        let authUser = null; // Holds the current logged-in user object
+        
+        try {
+            // This is replaced by Vercel with your Environment Variable
+            // Note: This must be valid JSON in Vercel, including double quotes around keys!
+            const firebaseConfigString = process.env.NEXT_PUBLIC_FIREBASE_CONFIG || '{}';
+            const firebaseConfig = JSON.parse(firebaseConfigString);
+            
+            if (firebaseConfig.apiKey) {
+                firebaseApp = firebase.initializeApp(firebaseConfig);
+                firebaseAuth = firebase.auth();
+                firestoreDB = firebase.firestore();
+                console.log("Firebase initialized successfully.");
+                setupAuthListener(); // Start listening for login changes
+            } else {
+                console.error("Firebase config is missing or invalid. Please check Vercel environment variables.");
+            }
+        } catch (e) {
+            console.error("Error parsing Firebase config:", e);
+        }
+
         // --- Mobile Menu ---
         const menuBtn = document.getElementById('mobile-menu-btn');
         const mobileMenu = document.getElementById('mobile-menu');
@@ -719,10 +922,28 @@
         const chatHistoryEl = document.getElementById('chat-history');
         const chatErrorMessage = document.getElementById('chat-error-message');
 
-        // NEW: Speech Elements
+        // Speech Elements
         const speechControls = document.getElementById('speech-controls');
         const micBtn = document.getElementById('mic-btn');
         const speechLangSelect = document.getElementById('speech-lang-select');
+        
+        // Contact Form Elements
+        const contactForm = document.getElementById('contact-form');
+        const contactFormContent = document.getElementById('contact-form-content');
+        const contactSuccessMessage = document.getElementById('contact-success-message');
+        const contactSubmitBtn = document.getElementById('contact-submit-btn');
+        const contactErrorMessage = document.getElementById('contact-error-message');
+
+        // Auth Elements
+        const authModal = document.getElementById('auth-modal');
+        const authCloseBtn = document.getElementById('auth-close-btn');
+        const signInBtnDesktop = document.getElementById('sign-in-btn-desktop');
+        const signInBtnMobile = document.getElementById('sign-in-btn-mobile');
+        const googleLoginBtn = document.getElementById('google-login-btn');
+        const emailAuthForm = document.getElementById('email-auth-form');
+        const emailLoginBtn = document.getElementById('email-login-btn');
+        const emailSignupBtn = document.getElementById('email-signup-btn');
+        const authErrorMessage = document.getElementById('auth-error-message');
 
         // App State
         let selectedFile = null;
@@ -766,6 +987,16 @@
         
         // --- State Validation ---
         function validateState() {
+            // PAYWALL: Check if user is logged in
+            if (!authUser) {
+                analyzeBtn.disabled = false; // Enable it
+                analyzeBtn.textContent = 'Sign in to Analyze'; // Change text
+                analyzeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                return; // Stop here
+            } else {
+                analyzeBtn.textContent = 'Analyze Document';
+            }
+
             const hasFile = selectedFile !== null;
             const hasText = textInput.value.trim().length > 0;
             const hasInput = hasFile || hasText;
@@ -1003,6 +1234,12 @@
 
         // --- Analyze Button Click ---
         analyzeBtn.addEventListener('click', async () => {
+            // PAYWALL: Check for login
+            if (!authUser) {
+                openAuthModal();
+                return;
+            }
+            
             if (analyzeBtn.disabled) {
                 errorMessage.textContent = 'Please add a file (or paste text) and select a mode.';
                 return;
@@ -1042,7 +1279,15 @@
 
             } catch (error) {
                 console.error('Error calling Gemini API:', error);
-                errorMessage.textContent = `AI Error: ${error.message}. Please try again.`;
+                
+                if (error.message.includes('402')) {
+                    errorMessage.textContent = `UPGRADE REQUIRED: ${error.message.split(': ')[1]}`;
+                } else if (error.message.includes('401')) {
+                    errorMessage.textContent = `Authentication Error. Please sign out and log back in.`;
+                } else {
+                    errorMessage.textContent = `AI Error: ${error.message}. Please try again.`;
+                }
+                
                 loadingState.classList.add('hidden');
                 inputState.classList.remove('hidden');
             }
@@ -1343,6 +1588,13 @@
         // --- Chat Logic ---
         chatForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            // PAYWALL: Check for login
+            if (!authUser) {
+                openAuthModal();
+                return;
+            }
+
             const question = chatInput.value.trim();
             if (!question) return;
 
@@ -1368,7 +1620,15 @@
 
             } catch (error) {
                 console.error('Chat error:', error);
-                chatErrorMessage.textContent = `Error: ${error.message}`;
+                
+                if (error.message.includes('402')) {
+                    chatErrorMessage.textContent = `UPGRADE REQUIRED: ${error.message.split(': ')[1]}`;
+                } else if (error.message.includes('401')) {
+                    chatErrorMessage.textContent = `Authentication Error. Please sign out and log back in.`;
+                } else {
+                    chatErrorMessage.textContent = `Chat Error: ${error.message}. Please try again.`;
+                }
+
                 loadingBubble.remove();
             }
         });
@@ -1430,11 +1690,16 @@
             elementsToTranslate.forEach(el => el.textContent = loadingIndicator);
 
             try {
+                // PAYWALL: Check for login before calling API
+                if (!authUser) {
+                    openAuthModal();
+                    throw new Error("401: Login required for translation.");
+                }
+
                 const translatedTexts = [];
-                // We can do this in parallel, Vercel will handle concurrency
                 const promises = originalTexts.map(text => {
                     if (text.trim() === '') {
-                        return Promise.resolve(''); // Resolve empty strings immediately
+                        return Promise.resolve('');
                     }
                     return callApi('/api/translate', {
                         text: text,
@@ -1445,23 +1710,27 @@
                 const results = await Promise.all(promises);
 
                 // Re-find elements and replace text
-                // *** THIS IS THE TRANSLATION FIX ***
                 outputContent.querySelectorAll('[data-translate]').forEach((el, index) => {
-                    // Check if the result is valid (not null/undefined)
                     if (results[index] != null) { 
                         el.textContent = results[index];
                     } else {
-                        // If translation failed for some reason, put back the original
                         el.textContent = originalTexts[index];
                     }
                 });
 
             } catch (error) {
                 console.error('Translate error:', error);
-                alert(`Translation failed: ${error.message}`);
+                
+                if (error.message.includes('401')) {
+                     alert(`Error: ${error.message.split(':')[1] || 'Login required for translation.'}`);
+                } else if (error.message.includes('402')) {
+                    alert(`UPGRADE REQUIRED: ${error.message.split(': ')[1]}`);
+                } else {
+                    alert(`Translation failed: ${error.message}`);
+                }
+                
                 // Restore original content on failure
                 outputContent.innerHTML = originalTabHtml[currentActiveTabId];
-                // Re-run post-render
                 const response = originalResponseData[currentActiveTabId];
                 if (response) {
                      if (currentActiveTabId === 'business' && response.chartData) {
@@ -1507,7 +1776,7 @@
             }
         });
 
-        // --- NEW: Speech Recognition Logic ---
+        // --- Speech Recognition Logic ---
         function setupSpeechRecognition() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             
@@ -1566,14 +1835,245 @@
         }
         setupSpeechRecognition(); // Call the setup function
 
+        // --- Contact Form Logic ---
+        contactForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('contact-name').value;
+            const email = document.getElementById('contact-email').value;
+            const message = document.getElementById('contact-message').value;
+
+            if (!name || !email || !message) {
+                contactErrorMessage.textContent = "Please fill out all fields.";
+                return;
+            }
+
+            // Show loading state
+            contactSubmitBtn.disabled = true;
+            contactSubmitBtn.textContent = 'Sending...';
+            contactErrorMessage.textContent = '';
+
+            try {
+                const response = await callApi('/api/contact', { name, email, message });
+                
+                // Show success message
+                contactFormContent.classList.add('hidden');
+                contactSuccessMessage.classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Contact form error:', error);
+                contactErrorMessage.textContent = `Error: ${error.message}`;
+                contactSubmitBtn.disabled = false;
+                contactSubmitBtn.textContent = 'Send Message';
+            }
+        });
+
+        // --- ********************************* ---
+        // --- NEW: AUTHENTICATION LOGIC
+        // --- ********************************* ---
+        
+        function openAuthModal() {
+            authModal.classList.add('active');
+            authErrorMessage.textContent = '';
+        }
+        function closeAuthModal() {
+            authModal.classList.remove('active');
+            authErrorMessage.textContent = '';
+        }
+
+        // --- Auth Listeners ---
+        signInBtnDesktop.addEventListener('click', (e) => {
+            e.preventDefault();
+            openAuthModal();
+        });
+        signInBtnMobile.addEventListener('click', (e) => {
+            e.preventDefault();
+            openAuthModal();
+            mobileMenu.classList.add('hidden'); // Close mobile menu
+        });
+        authCloseBtn.addEventListener('click', closeAuthModal);
+        authModal.addEventListener('click', (e) => {
+            if (e.target === authModal) closeAuthModal();
+        });
+
+        // --- Main Auth State Listener ---
+        function setupAuthListener() {
+            firebaseAuth.onAuthStateChanged(async (user) => {
+                if (user) {
+                    // User is signed in
+                    console.log('User is signed in:', user.email);
+                    authUser = user;
+                    updateUIForLoggedInUser(user);
+                    
+                    // Critical: Ensure the user exists in Firestore on EVERY login
+                    // This handles new Google users and existing users who just logged in.
+                    const token = await user.getIdToken();
+                    await callApi('/api/create-user', { token });
+                    
+                    closeAuthModal();
+                } else {
+                    // User is signed out
+                    console.log('User is signed out.');
+                    authUser = null;
+                    updateUIForLoggedOutUser();
+                }
+                validateState(); // Update analyze button text/state
+            });
+        }
+
+        // --- Update UI functions ---
+        function updateUIForLoggedInUser(user) {
+            // Shorten the email for display
+            const userEmail = user.email ? user.email.split('@')[0] : 'Account';
+            const authLinksDesktop = document.getElementById('auth-links-desktop');
+            const authLinksMobile = document.getElementById('auth-links-mobile');
+            const authActionDesktop = document.getElementById('auth-action-btn-desktop');
+            const authActionMobile = document.getElementById('auth-action-btn-mobile');
+
+            // Set Desktop Links
+            authLinksDesktop.innerHTML = `
+                <span class="text-gray-400 text-sm">Welcome, ${userEmail}</span>
+                <a href="#" id="sign-out-btn-desktop" class="text-gray-300 hover:text-white transition-colors">Sign Out</a>
+            `;
+            // Set Mobile Links
+            authLinksMobile.innerHTML = `
+                <span class="text-gray-400 text-sm px-1">Welcome, ${userEmail}</span>
+                <a href="#" id="sign-out-btn-mobile" class="text-gray-300 hover:text-white transition-colors px-1">Sign Out</a>
+            `;
+            
+            // Change "Get Started" to "Upgrade" (we'll link this to Razorpay later)
+            const upgradeButtonHTML = `
+                <a href="#" id="upgrade-btn-desktop" class="hidden md:block px-5 py-2.5 rounded-lg font-semibold text-white bg-green-600 hover:bg-green-500 transition-opacity shadow-lg shadow-green-500/20">
+                    Upgrade to Pro
+                </a>`;
+            authActionDesktop.innerHTML = upgradeButtonHTML;
+            authActionMobile.innerHTML = `<a href="#" id="upgrade-btn-mobile" class="px-5 py-2.5 rounded-lg font-semibold text-white text-center bg-green-600 hover:bg-green-500 transition-opacity">Upgrade to Pro</a>`;
+
+            // Add sign out event listeners
+            document.getElementById('sign-out-btn-desktop').addEventListener('click', handleSignOut);
+            document.getElementById('sign-out-btn-mobile').addEventListener('click', handleSignOut);
+            
+            // TODO: Add event listeners for upgrade buttons
+            // document.getElementById('upgrade-btn-desktop').addEventListener('click', handleUpgradeClick);
+            // document.getElementById('upgrade-btn-mobile').addEventListener('click', handleUpgradeClick);
+        }
+
+        function updateUIForLoggedOutUser() {
+            const authLinksDesktop = document.getElementById('auth-links-desktop');
+            const authLinksMobile = document.getElementById('auth-links-mobile');
+            const authActionDesktop = document.getElementById('auth-action-btn-desktop');
+            const authActionMobile = document.getElementById('auth-action-btn-mobile');
+
+            authLinksDesktop.innerHTML = `<a href="#" id="sign-in-btn-desktop" class="text-gray-300 hover:text-white transition-colors">Sign In</a>`;
+            authLinksMobile.innerHTML = `<a href="#" id="sign-in-btn-mobile" class="text-gray-300 hover:text-white transition-colors">Sign In</a>`;
+
+            const getStartedButtonHTML = `
+                <a href="#pricing" class="hidden md:block px-5 py-2.5 rounded-lg font-semibold text-white gradient-bg hover:opacity-90 transition-opacity shadow-lg shadow-purple-500/20">
+                    Get Started Free
+                </a>`;
+            authActionDesktop.innerHTML = getStartedButtonHTML;
+            authActionMobile.innerHTML = `<a href="#pricing" class="px-5 py-2.5 rounded-lg font-semibold text-white text-center gradient-bg hover:opacity-90 transition-opacity shadow-lg shadow-purple-500/20">Get Started Free</a>`;
+
+            // Re-add sign in listeners
+            document.getElementById('sign-in-btn-desktop').addEventListener('click', (e) => { e.preventDefault(); openAuthModal(); });
+            document.getElementById('sign-in-btn-mobile').addEventListener('click', (e) => { e.preventDefault(); openAuthModal(); mobileMenu.classList.add('hidden'); });
+        }
+
+        // --- Auth Action Handlers ---
+        async function handleGoogleLogin(e) {
+            e.preventDefault();
+            if (!firebaseAuth) return;
+            const provider = new firebase.auth.GoogleAuthProvider();
+            authErrorMessage.textContent = '';
+            
+            try {
+                const result = await firebaseAuth.signInWithPopup(provider);
+                const user = result.user;
+                // isNewUser property is unreliable in compat SDK, rely on callApi
+                
+                // Get the fresh token
+                const token = await user.getIdToken();
+                // Call our backend to create the user in Firestore (it handles existing user check)
+                await callApi('/api/create-user', { token });
+                
+                closeAuthModal();
+            } catch (error) {
+                console.error("Google login error:", error);
+                authErrorMessage.textContent = error.message;
+            }
+        }
+        
+        googleLoginBtn.addEventListener('click', handleGoogleLogin);
+
+        async function handleEmailSignup() {
+            if (!firebaseAuth) return;
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            authErrorMessage.textContent = '';
+            
+            try {
+                const result = await firebaseAuth.createUserWithEmailAndPassword(email, password);
+                const user = result.user;
+
+                // User is created, now create database entry
+                const token = await user.getIdToken();
+                await callApi('/api/create-user', { token });
+                
+                closeAuthModal();
+            } catch (error) {
+                console.error("Email signup error:", error);
+                authErrorMessage.textContent = error.message;
+            }
+        }
+        emailSignupBtn.addEventListener('click', (e) => {e.preventDefault(); handleEmailSignup();});
+        
+        async function handleEmailLogin() {
+            if (!firebaseAuth) return;
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            authErrorMessage.textContent = '';
+            
+            try {
+                await firebaseAuth.signInWithEmailAndPassword(email, password);
+                closeAuthModal();
+            } catch (error) {
+                console.error("Email login error:", error);
+                authErrorMessage.textContent = error.message;
+            }
+        }
+        emailLoginBtn.addEventListener('click', (e) => {e.preventDefault(); handleEmailLogin();});
+
+        function handleSignOut(e) {
+            e.preventDefault();
+            if (firebaseAuth) {
+                firebaseAuth.signOut();
+            }
+        }
+
         // --- Universal API Call Function ---
         async function callApi(endpoint, body) {
+            let authToken = null;
+            if (authUser) {
+                try {
+                    // Get the latest token to ensure it hasn't expired
+                    authToken = await authUser.getIdToken(true); 
+                } catch (e) {
+                    console.error('Could not get auth token, signing out:', e);
+                    firebaseAuth.signOut(); 
+                    throw new Error("401: Session expired. Please sign in again.");
+                }
+            }
+
             let response;
             let delay = 1000;
             for (let i = 0; i < 5; i++) {
                 response = await fetch(endpoint, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        // Send the token in the header for backend verification
+                        'Authorization': `Bearer ${authToken}`
+                    },
                     body: JSON.stringify(body)
                 });
 
