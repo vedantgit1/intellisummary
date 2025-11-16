@@ -45,7 +45,7 @@ export default async function handler(request, response) {
             const customer = await razorpay.customers.create({
                 name: userData.name || 'New User',
                 email: userData.email,
-                contact: '', // You can add a phone number field later
+                contact: '', 
                 notes: {
                     firebase_uid: uid, // This links the Razorpay customer to your Firebase user
                 },
@@ -61,7 +61,7 @@ export default async function handler(request, response) {
         const subscription = await razorpay.subscriptions.create({
             plan_id: plan_id,
             customer_id: razorpayCustomerId,
-            total_count: 12, // e.g., for 12 months
+            total_count: 12, // e.g., for 12 months (can be infinite if plan allows)
             quantity: 1,
             notes: {
                 firebase_uid: uid, // Add a note for tracking
