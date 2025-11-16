@@ -1857,7 +1857,17 @@
             contactErrorMessage.textContent = '';
 
             try {
-                const response = await callApi('/api/contact', { name, email, message });
+                // No auth token needed for contact form
+                const response = await fetch('/api/contact', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, message })
+                });
+                
+                if (!response.ok) {
+                    const errorBody = await response.json();
+                    throw new Error(errorBody.error || 'Failed to send message.');
+                }
                 
                 // Show success message
                 contactFormContent.classList.add('hidden');
@@ -1964,9 +1974,9 @@
             document.getElementById('sign-out-btn-desktop').addEventListener('click', handleSignOut);
             document.getElementById('sign-out-btn-mobile').addEventListener('click', handleSignOut);
             
-            // TODO: Add event listeners for upgrade buttons
-            // document.getElementById('upgrade-btn-desktop').addEventListener('click', handleUpgradeClick);
-            // document.getElementById('upgrade-btn-mobile').addEventListener('click', handleUpgradeClick);
+            // Add event listeners for upgrade buttons
+            document.getElementById('upgrade-btn-desktop').addEventListener('click', handleUpgradeClick);
+            document.getElementById('upgrade-btn-mobile').addEventListener('click', handleUpgradeClick);
         }
 
         function updateUIForLoggedOutUser() {
@@ -2060,6 +2070,65 @@
                 firebaseAuth.signOut();
             }
         }
+
+        // --- NEW: RAZORPAY PAYMENT LOGIC ---
+        async function handleUpgradeClick(e) {
+            e.preventDefault();
+            
+            if (!authUser) {
+                openAuthModal();
+                return;
+            }
+            
+            // Show a simple loading state
+            e.target.textContent = "Redirecting to payment...";
+            e.target.disabled = true;
+
+            try {
+                // 1. Call our backend to create a subscription
+                const subData = await callApi('/api/create-subscription', {});
+                
+                if (subData.subscriptionId) {
+                    // 2. Open Razorpay Checkout
+                    const options = {
+                        key: subData.key_id, // Your Razorpay Key ID
+                        subscription_id: subData.subscriptionId,
+                        name: "IntelliSummary Pro",
+                        description: "Monthly Pro Plan",
+                        handler: function (response) {
+                            // This function is called on a successful payment
+                            alert("Payment Successful! Your plan is now Pro.");
+                            // The webhook will handle the database update, but
+                            // we can optimistically update the UI here.
+                            location.reload(); // Simple way to refresh user state
+                        },
+                        prefill: {
+                            name: authUser.displayName || "",
+                            email: authUser.email || "",
+                        },
+                        theme: {
+                            color: "#a855f7"
+                        }
+                    };
+                    const rzp = new Razorpay(options);
+                    rzp.open();
+                }
+
+            } catch (error) {
+                console.error("Payment error:", error);
+                alert(`Error: ${error.message}`);
+                e.target.textContent = "Upgrade to Pro";
+                e.target.disabled = false;
+            }
+        }
+        
+        // --- Attach listeners to pricing buttons ---
+        document.getElementById('free-plan-btn').addEventListener('click', (e) => {
+             e.preventDefault();
+             openAuthModal(); // "Get Started" on free plan just opens login
+        });
+        document.getElementById('pro-plan-btn').addEventListener('click', handleUpgradeClick);
+
 
         // --- Universal API Call Function ---
         async function callApi(endpoint, body) {
