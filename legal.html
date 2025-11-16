@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Legal - IntelliSummary</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #030712; /* Tailwind gray-950 */
+            color: #d1d5db; /* gray-300 */
+        }
+        .gradient-text {
+            background: linear-gradient(90deg, #a855f7, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .policy-nav-item {
+            cursor: pointer;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: background-color 0.2s ease;
+        }
+        .policy-nav-item:hover {
+            background-color: #1f2937; /* gray-800 */
+        }
+        .policy-nav-item.active {
+            background-color: #a855f7; /* purple-500 */
+            color: white;
+        }
+        .policy-content {
+            display: none; /* Hidden by default */
+        }
+        .policy-content.active {
+            display: block; /* Shown by JS */
+        }
+        /* Styles for the legal text */
+        .legal-text h2 {
+            font-size: 1.875rem; /* text-3xl */
+            font-weight: 700;
+            color: white;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid #374151; /* gray-700 */
+            padding-bottom: 0.5rem;
+        }
+        .legal-text h3 {
+            font-size: 1.25rem; /* text-xl */
+            font-weight: 600;
+            color: #f3f4f6; /* gray-100 */
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+        .legal-text p, .legal-text ul {
+            margin-bottom: 1.25rem;
+            line-height: 1.75;
+            color: #9ca3af; /* gray-400 */
+        }
+        .legal-text ul {
+            list-style-type: disc;
+            padding-left: 1.5rem;
+        }
+        .legal-text a {
+            color: #a855f7; /* purple-500 */
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Header -->
+    <header class="py-6 border-b border-gray-800">
+        <nav class="container mx-auto max-w-7xl px-6 flex justify-between items-center">
+            <div>
+                <a href="index.html" class="text-2xl font-bold text-white">
+                    Intelli<span class="gradient-text">Summary</span>
+                </a>
+            </div>
+            <a href="index.html" class="px-5 py-2.5 rounded-lg font-semibold text-white bg-gray-700 hover:bg-gray-600 transition-colors">
+                Back to Home
+            </a>
+        </nav>
+    </header>
+
+    <main class="container mx-auto max-w-7xl px-6 py-16">
+        <div class="grid md:grid-cols-4 gap-12">
+            
+            <!-- Navigation Sidebar -->
+            <aside class="md:col-span-1">
+                <h1 class="text-2xl font-bold text-white mb-6">Legal Center</h1>
+                <nav id="policy-nav" class="flex flex-col space-y-2">
+                    <a class="policy-nav-item" data-page="terms">Terms of Service</a>
+                    <a class="policy-nav-item" data-page="privacy">Privacy Policy</a>
+                    <a class="policy-nav-item" data-page="refunds">Cancellations & Refunds</a>
+                    <!-- NEW LINK ADDED HERE -->
+                    <a class="policy-nav-item" data-page="shipping">Shipping Policy</a>
+                </nav>
+            </aside>
+
+            <!-- Content Area -->
+            <section class="md:col-span-3 legal-text">
+
+                <!-- Terms of Service Content -->
+                <div id="content-terms" class="policy-content">
+                    <h2>Terms of Service</h2>
+                    <p>Last updated: November 16, 2025</p>
+                    <p>Please read these Terms of Service ("Terms") carefully before using the IntelliSummary website (the "Service") operated by us.</p>
+                    <p>Your access to and use of the Service is conditioned on your acceptance of and compliance with these Terms. These Terms apply to all visitors, users, and others who access or use the Service.</p>
+
+                    <h3>1. User Accounts</h3>
+                    <p>When you create an account with us (using Firebase Authentication), you must provide information that is accurate, complete, and current at all times. Failure to do so constitutes a breach of the Terms, which may result in immediate termination of your account on our Service.</p>
+                    <p>You are responsible for safeguarding the password that you use to access the Service and for any activities or actions under your password.</p>
+
+                    <h3>2. Subscriptions & Payments</h3>
+                    <p>Some parts of the Service are billed on a subscription basis ("Subscription(s)"). You will be billed in advance on a recurring and periodic basis ("Billing Cycle"). Billing cycles are set on a monthly or annual basis, depending on the type of subscription plan you select.</p>
+                    <p>Payments are processed by our third-party payment processors (e.g., Razorpay, PayPal). We do not store or collect your payment card details.</p>
+
+                    <h3>3. User-Generated Content</h3>
+                    <p>Our Service allows you to upload or paste documents ("User Content") for processing. You retain any and all of your rights to any User Content you submit. By uploading content, you grant us a limited license to use, process, and transmit this content *only* for the purpose of providing the Service to you (e.g., sending it to our AI API provider, Google Gemini, for analysis).</p>
+                    <p>You agree not to use the Service to upload, process, or transmit any content that is unlawful, harmful, threatening, or otherwise objectionable.</p>
+                    
+                    <h3>4. Disclaimer of Warranties</h3>
+                    <p>The Service is provided on an "AS IS" and "AS AVAILABLE" basis. The AI-generated output may contain inaccuracies or errors. We do not warrant that the results obtained from the use of the Service will be accurate, reliable, or meet your requirements. You expressly agree that your use of the Service is at your sole risk.</p>
+                    
+                    <h3>5. Changes to Terms</h3>
+                    <p>We reserve the right, at our sole discretion, to modify or replace these Terms at any time. We will provide at least 30 days' notice prior to any new terms taking effect.</p>
+                </div>
+
+                <!-- Privacy Policy Content -->
+                <div id="content-privacy" class="policy-content">
+                    <h2>Privacy Policy</h2>
+                    <p>Last updated: November 16, 2025</p>
+                    <p>We respect your privacy and are committed to protecting it. This Privacy Policy explains how we collect, use, and safeguard your information when you use our Service.</p>
+                    
+                    <h3>1. Information We Collect</h3>
+                    <ul>
+                        <li><strong>Personal Data:</strong> When you register (via Firebase Authentication), we may collect your name and email address.</li>
+                        <li><strong>Payment Data:</strong> When you purchase a subscription, our payment processor (e.g., Razorpay) will collect payment information. We do not store this information.</li>
+                        <li><strong>Document Content:</strong> We temporarily process the documents you upload or paste ("User Content") to provide the summarization, analysis, and chat features.</li>
+                    </ul>
+
+                    <h3>2. How We Use Your Information</h3>
+                    <ul>
+                        <li>To create and manage your account.</li>
+                        <li>To process your payments and subscriptions.</li>
+                        <li>To provide the core AI features. This involves sending your User Content to our third-party AI API provider (Google Gemini) for processing. We do not store your User Content after the processing is complete.</li>
+                        <li>To respond to your "Contact Us" messages or support requests.</li>
+                    </ul>
+
+                    <h3>3. Data Storage & Security</h3>
+                    <p>We use Firebase Firestore to store your user profile (e.g., `email`, `subscription_plan`). We do not permanently store the documents you upload. We use industry-standard security measures to protect your data. All communication is encrypted using SSL.</p>
+
+                    <h3>4. Third-Party Services</h3>
+                    <p>Our Service relies on third-party services:</p>
+                    <ul>
+                        <li><strong>Google Firebase:</strong> For user authentication and database.</li>
+                        <li><strong>Google Gemini (AI API):</strong> For processing your documents.</li>
+                        <li><strong>Razorpay/PayPal:</strong> For processing payments.</li>
+                        <li><strong>Vercel:</strong> For hosting our application.</li>
+                    </ul>
+                    <p>These services have their own privacy policies, and we recommend you review them.</p>
+
+                    <h3>5. Your Rights</h3>
+                    <p>You have the right to access, update, or delete your personal information at any time by logging into your account or contacting us.</p>
+                </div>
+                
+                <!-- Refund & Cancellation Policy Content -->
+                <div id="content-refunds" class="policy-content">
+                    <h2>Cancellation & Refund Policy</h2>
+                    <p>Last updated: November 16, 2025</p>
+
+                    <h3>1. Cancellation</h3>
+                    <p>You may cancel your "Pro" subscription at any time. You can do this through your account settings (once implemented) or by contacting our support team.</p>
+                    <p>If you cancel, your subscription will remain active until the end of your current billing period (e.g., the end of the month). You will not be charged again after that. You can continue to use all "Pro" features until your subscription expires.</p>
+
+                    <h3>2. Refund Policy</h3>
+                    <p>All payments for subscriptions are **non-refundable**. We do not provide refunds or credits for any partial subscription periods or unused features.</p>
+                    <p>We encourage you to use our "Free" plan to determine if the Service is right for you before upgrading to a "Pro" plan.</p>
+                    <p>In the rare event of a billing error, please contact us at <a href="index.html#contact">our contact page</a> and we will investigate the issue.</p>
+                </div>
+
+                <!-- NEW: Shipping Policy Content -->
+                <div id="content-shipping" class="policy-content">
+                    <h2>Shipping & Delivery Policy</h2>
+                    <p>Last updated: November 16, 2025</p>
+
+                    <h3>1. Service Type</h3>
+                    <p>IntelliSummary is a digital Software-as-a-Service (SaaS) product. The Service is accessed online via our website.</p>
+
+                    <h3>2. Delivery of Service</h3>
+                    <p>Upon successful registration for a "Free" plan, access to the Service is granted immediately.</p>
+                    <p>Upon successful payment for a "Pro" plan or any other paid subscription, your account will be upgraded, and "Pro" features will be enabled instantly. You will receive an email confirmation of your purchase and subscription activation.</p>
+                    
+                    <h3>3. Shipping Policy</h3>
+                    <p>No physical items or goods are shipped as part of our Service. All products, features, and services provided by IntelliSummary are digital and delivered electronically via internet access.</p>
+                    <p>Therefore, no shipping policy, shipping charges, or delivery timelines for physical goods are applicable to our Service.</p>
+                </div>
+
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-16 bg-gray-900 border-t border-gray-800">
+        <div class="container mx-auto max-w-7xl px-6 text-center text-sm text-gray-500">
+            &copy; 2025 IntelliSummary. All rights reserved.
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const navItems = document.querySelectorAll('.policy-nav-item');
+            const contentItems = document.querySelectorAll('.policy-content');
+            const navContainer = document.getElementById('policy-nav');
+
+            function showContent(pageId) {
+                // Hide all content
+                contentItems.forEach(content => {
+                    content.classList.remove('active');
+                });
+                
+                // Deactivate all nav items
+                navItems.forEach(nav => {
+                    nav.classList.remove('active');
+                });
+
+                // Show the target content
+                const targetContent = document.getElementById(`content-${pageId}`);
+                const targetNav = navContainer.querySelector(`[data-page="${pageId}"]`);
+
+                if (targetContent && targetNav) {
+                    targetContent.classList.add('active');
+                    targetNav.classList.add('active');
+                }
+            }
+
+            // Handle nav item clicks
+            navItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const pageId = e.target.dataset.page;
+                    showContent(pageId);
+                    // Set the hash for bookmarking/linking
+                    window.location.hash = pageId;
+                });
+            });
+
+            // Show content based on URL on page load
+            function showContentFromUrl() {
+                const pageId = window.location.hash.substring(1) || 'terms'; // Get 'terms' from '#terms'
+                showContent(pageId);
+            }
+
+            // Show content based on URL on page load
+            showContentFromUrl();
+
+            // Also listen for hash changes (e.g., browser back button)
+            window.addEventListener('hashchange', showContentFromUrl);
+        });
+    </script>
+</body>
+</html>
