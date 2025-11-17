@@ -19,11 +19,10 @@
     <!-- Chart.js (Loaded deferred) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
     
-    <!-- NEW: Razorpay Checkout Script (for payments later) -->
+    <!-- Razorpay Checkout Script -->
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     
-    <!-- NEW: Firebase SDKs -->
-    <!-- We will initialize Firebase in the main script at the bottom -->
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -715,7 +714,7 @@
                         <p class="text-4xl font-bold text-white mt-2">$0 <span class="text-base font-normal text-gray-400">/ month</span></p>
                         <p class="mt-2 text-gray-400">For light use and students.</p>
                         <ul class="space-y-3 mt-6 text-gray-300 flex-grow">
-                            <li class="flex items-center"><svg class="w-5 h-5 text-purple-400 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>5 document uploads / month</li>
+                            <li class="flex items-center"><svg class="w-5 h-5 text-purple-400 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>5 document uses / month</li>
                             <li class="flex items-center"><svg class="w-5 h-5 text-purple-400 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>Quick Summary & Study Buddy</li>
                             <li class="flex items-center"><svg class="w-5 h-5 text-purple-400 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>10 pages per document</li>
                         </ul>
@@ -733,13 +732,13 @@
                         <p class="text-4xl font-bold text-white mt-2">$15 <span class="text-base font-normal text-gray-400">/ month</span></p>
                         <p class="mt-2 text-gray-400">For professionals & heavy users.</p>
                         <ul class="space-y-3 mt-6 text-gray-300 flex-grow">
-                            <li class="flex items-center"><svg class="w-5 h-5 text-purple-400 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>Unlimited document uploads</li>
+                            <li class="flex items-center"><svg class="w-5 h-5 text-purple-400 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>Unlimited document uses</li>
                             <li class="flex items-center"><svg class="w-5 h-5 text-purple-400 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>All 1-Click Persona Tools</li>
                             <li class="flex items-center"><svg class="w-5 h-5 text-purple-400 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>Business Analyst Charts</li>
                             <li class="flex items-center"><svg class="w-5 h-5 text-purple-400 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>500 pages per document</li>
                         </ul>
                         <a href="#" id="pro-plan-btn" class="mt-8 block w-full text-center py-3 px-5 rounded-lg font-semibold text-white gradient-bg hover:opacity-90 transition-opacity">
-                            Start Free Trial
+                            Upgrade to Pro
                         </a>
                     </div>
                     
@@ -754,7 +753,7 @@
                             <li class="flex items-center"><svg class="w-5 h-5 text-purple-400 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>Priority Support</li>
                             <li class="flex items-center"><svg class="w-5 h-5 text-purple-400 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>Advanced Security & SSO</li>
                         </ul>
-                        <a href="#" class="mt-8 block w-full text-center py-3 px-5 rounded-lg font-semibold text-white bg-gray-700 hover:bg-gray-600 transition-colors">
+                        <a href="#contact" class="mt-8 block w-full text-center py-3 px-5 rounded-lg font-semibold text-white bg-gray-700 hover:bg-gray-600 transition-colors">
                             Contact Sales
                         </a>
                     </div>
@@ -863,27 +862,34 @@
         let firestoreDB;
         let authUser = null; // Holds the current logged-in user object
         
+        // --- THIS IS THE FIX ---
+        // We will paste the public config object right here.
+        // This is safe and standard practice.
+        
+        // PASTE YOUR FIREBASE CONFIG OBJECT HERE
+        const firebaseConfig = {
+            apiKey: "PASTE_YOUR_API_KEY_HERE",
+            authDomain: "PASTE_YOUR_AUTH_DOMAIN_HERE",
+            projectId: "PASTE_YOUR_PROJECT_ID_HERE",
+            storageBucket: "PASTE_YOUR_STORAGE_BUCKET_HERE",
+            messagingSenderId: "PASTE_YOUR_SENDER_ID_HERE",
+            appId: "PASTE_YOUR_APP_ID_HERE"
+        };
+        
         try {
-            // This is replaced by Vercel with your Environment Variable
-            // Note: This must be valid JSON in Vercel, including double quotes around keys!
-            const firebaseConfigString = process.env.NEXT_PUBLIC_FIREBASE_CONFIG || '{}';
-            // FIX: Ensure quotes around object keys in the parsed string for Firebase to work.
-            const firebaseConfig = JSON.parse(firebaseConfigString.replace(/(\w+:)|(\w+ :)/g, (matched) => {
-                return '"' + matched.replace(/[:\s]/g, '') + '":';
-            }));
-            
-            if (firebaseConfig.apiKey) {
+            if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "PASTE_YOUR_API_KEY_HERE") {
                 firebaseApp = firebase.initializeApp(firebaseConfig);
                 firebaseAuth = firebase.auth();
                 firestoreDB = firebase.firestore();
                 console.log("Firebase initialized successfully.");
                 setupAuthListener(); // Start listening for login changes
             } else {
-                console.error("Firebase config is missing or invalid. Please check Vercel environment variables.");
+                console.error("Firebase config is missing or invalid. Please paste your public keys from Firebase.");
             }
         } catch (e) {
-            console.error("Error parsing Firebase config:", e);
+            console.error("Error initializing Firebase:", e);
         }
+        // --- END OF FIX ---
 
         // --- Mobile Menu ---
         const menuBtn = document.getElementById('mobile-menu-btn');
@@ -947,6 +953,10 @@
         const emailLoginBtn = document.getElementById('email-login-btn');
         const emailSignupBtn = document.getElementById('email-signup-btn');
         const authErrorMessage = document.getElementById('auth-error-message');
+        
+        // Pricing Buttons
+        const freePlanBtn = document.getElementById('free-plan-btn');
+        const proPlanBtn = document.getElementById('pro-plan-btn');
 
         // App State
         let selectedFile = null;
@@ -1857,16 +1867,16 @@
             contactErrorMessage.textContent = '';
 
             try {
-                // No auth token needed for contact form
+                // No auth token is needed for the contact form
                 const response = await fetch('/api/contact', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ name, email, message })
                 });
-                
+
                 if (!response.ok) {
                     const errorBody = await response.json();
-                    throw new Error(errorBody.error || 'Failed to send message.');
+                    throw new Error(errorBody.error || `HTTP error! status: ${response.status}`);
                 }
                 
                 // Show success message
@@ -1924,7 +1934,15 @@
                     // This handles new Google users and existing users who just logged in.
                     const token = await user.getIdToken();
                     try {
-                        await callApi('/api/create-user', { token });
+                        // Pass the token to our new /api/create-user endpoint
+                        await fetch('/api/create-user', {
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}` 
+                            },
+                            body: JSON.stringify({ token: token }) // Send token in body as well, just in case
+                        });
                     } catch (e) {
                          console.error("Failed to create/check user in Firestore:", e);
                          // If we fail here, we should probably sign them out
@@ -2010,13 +2028,7 @@
             try {
                 const result = await firebaseAuth.signInWithPopup(provider);
                 const user = result.user;
-                // isNewUser property is unreliable in compat SDK, rely on callApi
-                
-                // Get the fresh token
-                const token = await user.getIdToken();
-                // Call our backend to create the user in Firestore (it handles existing user check)
-                await callApi('/api/create-user', { token });
-                
+                // The onAuthStateChanged listener will handle the rest.
                 closeAuthModal();
             } catch (error) {
                 console.error("Google login error:", error);
@@ -2034,12 +2046,7 @@
             
             try {
                 const result = await firebaseAuth.createUserWithEmailAndPassword(email, password);
-                const user = result.user;
-
-                // User is created, now create database entry
-                const token = await user.getIdToken();
-                await callApi('/api/create-user', { token });
-                
+                // The onAuthStateChanged listener will handle the rest.
                 closeAuthModal();
             } catch (error) {
                 console.error("Email signup error:", error);
@@ -2056,6 +2063,7 @@
             
             try {
                 await firebaseAuth.signInWithEmailAndPassword(email, password);
+                // The onAuthStateChanged listener will handle the rest.
                 closeAuthModal();
             } catch (error) {
                 console.error("Email login error:", error);
@@ -2070,64 +2078,61 @@
                 firebaseAuth.signOut();
             }
         }
-
-        // --- NEW: RAZORPAY PAYMENT LOGIC ---
-        async function handleUpgradeClick(e) {
+        
+        // --- Pricing/Upgrade Button Handlers ---
+        function handleUpgradeClick(e) {
             e.preventDefault();
-            
             if (!authUser) {
                 openAuthModal();
                 return;
             }
-            
-            // Show a simple loading state
-            e.target.textContent = "Redirecting to payment...";
-            e.target.disabled = true;
-
-            try {
-                // 1. Call our backend to create a subscription
-                const subData = await callApi('/api/create-subscription', {});
-                
-                if (subData.subscriptionId) {
-                    // 2. Open Razorpay Checkout
-                    const options = {
-                        key: subData.key_id, // Your Razorpay Key ID
-                        subscription_id: subData.subscriptionId,
-                        name: "IntelliSummary Pro",
-                        description: "Monthly Pro Plan",
-                        handler: function (response) {
-                            // This function is called on a successful payment
-                            alert("Payment Successful! Your plan is now Pro.");
-                            // The webhook will handle the database update, but
-                            // we can optimistically update the UI here.
-                            location.reload(); // Simple way to refresh user state
-                        },
-                        prefill: {
-                            name: authUser.displayName || "",
-                            email: authUser.email || "",
-                        },
-                        theme: {
-                            color: "#a855f7"
-                        }
-                    };
-                    const rzp = new Razorpay(options);
-                    rzp.open();
-                }
-
-            } catch (error) {
-                console.error("Payment error:", error);
-                alert(`Error: ${error.message}`);
-                e.target.textContent = "Upgrade to Pro";
-                e.target.disabled = false;
-            }
+            // Call our backend to create a subscription
+            handleCreateSubscription();
         }
         
-        // --- Attach listeners to pricing buttons ---
-        document.getElementById('free-plan-btn').addEventListener('click', (e) => {
-             e.preventDefault();
-             openAuthModal(); // "Get Started" on free plan just opens login
+        freePlanBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            openAuthModal(); // "Get Started" on free plan just opens login
         });
-        document.getElementById('pro-plan-btn').addEventListener('click', handleUpgradeClick);
+        proPlanBtn.addEventListener('click', handleUpgradeClick); // "Start Free Trial" on Pro plan starts checkout
+
+
+        // --- RAZORPAY PAYMENT LOGIC ---
+        async function handleCreateSubscription() {
+            console.log("Creating subscription...");
+            try {
+                const { subscriptionId, key_id } = await callApi('/api/create-subscription', {});
+                
+                const options = {
+                    key: key_id,
+                    subscription_id: subscriptionId,
+                    name: "IntelliSummary Pro",
+                    description: "Monthly Pro Subscription",
+                    handler: function (response) {
+                        // This function is called on a SUCCESSFUL payment
+                        alert("Payment successful! Your account is now Pro.");
+                        // We don't need to update the database here,
+                        // the /api/razorpay-webhook will do it securely.
+                        // We just need to update the UI.
+                        updateUIForLoggedInUser(authUser); // This will re-fetch plan
+                    },
+                    prefill: {
+                        name: authUser.displayName || "",
+                        email: authUser.email || "",
+                    },
+                    theme: {
+                        color: "#a855f7"
+                    }
+                };
+                
+                const rzp = new Razorpay(options);
+                rzp.open();
+
+            } catch (error) {
+                console.error("Error creating subscription:", error);
+                alert(`Error: ${error.message}`);
+            }
+        }
 
 
         // --- Universal API Call Function ---
@@ -2154,7 +2159,7 @@
                         // Send the token in the header for backend verification
                         'Authorization': `Bearer ${authToken}`
                     },
-                    body: JSON.stringify(body)
+                    body: JSON.stringify(body || {}) // Ensure body is an object
                 });
 
                 if (response.ok) {
